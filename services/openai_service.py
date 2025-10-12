@@ -6,7 +6,7 @@ import base64
 import logging
 from typing import Optional
 from openai import OpenAI
-from config.prompts import ART_EXPLANATION_PROMPT, WIKILINK_EXPANSION_PROMPT
+from config.prompts import ART_EXPLANATION_PROMPT, WIKILINK_EXPANSION_USER_MESSAGE
 from utils.response_cleaner import clean_xml_response
 from models import ArtworkExplanation
 
@@ -102,29 +102,24 @@ class OpenAIService:
 
     async def expand_subject(
         self,
-        term: str,
-        original_interpretation: str,
-        cache_name: Optional[str] = None
+        artwork_id: str,
+        original_artwork_explanation: str,
+        subject: str,
     ) -> str:
         """
         Expand on a subject/term using text-only context (OpenAI doesn't support explicit cache reuse).
         """
-        logger.info(f"OpenAI: Expanding subject '{term}' with text-only context")
+        logger.info(f"OpenAI: Expanding subject '{subject}' with text-only context")
         
         try:
+            # Create a fake conversation where the AI already provided the original analysis
             response = self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": WIKILINK_EXPANSION_PROMPT},
-                    {
-                        "role": "user",
-                        "content": f"""Original Artwork Analysis:
-{original_interpretation}
-
-Term to explain: {term}
-
-Please provide an in-depth explanation of this term specifically in the context of the artwork described in the analysis above."""
-                    },
+                    {"role": "system", "content": ART_EXPLANATION_PROMPT},
+                    {"role": "user", "content": "Please analyze this artwork."},
+                    {"role": "assistant", "content": original_artwork_explanation},
+                    {"role": "user", "content": WIKILINK_EXPANSION_USER_MESSAGE.format(subject=subject)},
                 ],
                 temperature=0.7,
                 max_tokens=4096,

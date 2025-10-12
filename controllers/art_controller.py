@@ -67,58 +67,6 @@ async def explain_artwork_handler(
         status_code=HTTP_200_OK,
     )
 
-
-async def explain_artwork_with_cache_handler(
-    data: UploadFile,
-    *,
-    ai_service: AIService,
-) -> Response:
-    """
-    Handle artwork explanation request with caching enabled.
-
-    Args:
-        data: Uploaded image file
-        ai_service: AI service instance injected by dependency injection
-
-    Returns:
-        Response with XML interpretation and cache identifier in headers
-
-    Raises:
-        ValueError: If image validation fails
-        Exception: If any other error occurs during processing
-    """
-    logger.info(
-        f"Received artwork explanation request with caching: filename={data.filename}, "
-        f"content_type={data.content_type}"
-    )
-
-    # Generate unique cache name
-    cache_name = f"artwork_{uuid.uuid4().hex[:16]}"
-
-    # Read image data
-    image_data = await data.read()
-    logger.info(f"Read uploaded file: {len(image_data)} bytes")
-
-    # Validate and process image
-    processed_image_data = await validate_and_process_image(image_data)
-
-    # Get explanation from AI with caching
-    artwork_explanation = await ai_service.interpret_artwork_with_cache(
-        processed_image_data, cache_name
-    )
-
-    # Return XML response with cache ID in header
-    logger.info(
-        f"Successfully generated artwork explanation response with cache: {artwork_explanation.cache_id}"
-    )
-    return Response(
-        content=artwork_explanation.explanation_xml,
-        media_type="application/xml",
-        status_code=HTTP_200_OK,
-        headers={"X-Cache-ID": artwork_explanation.cache_id},
-    )
-
-
 @dataclass
 class ExpandSubjectRequest:
     """Request data for expanding on a wikilink subject."""

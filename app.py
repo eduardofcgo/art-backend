@@ -14,7 +14,6 @@ from litestar.di import Provide
 
 from controllers.art_controller import (
     explain_artwork_handler,
-    explain_artwork_with_cache_handler,
     expand_subject_handler,
     ExpandSubjectRequest,
 )
@@ -57,7 +56,7 @@ async def explain_artwork(
     """
     return await explain_artwork_handler(data, ai_service=ai_service)
 
-@post("/artwork/{artwork_id:str}/expand-subject")
+@post("/artwork/{artwork_id:str}/subject")
 async def expand_subject(
     data: ExpandSubjectRequest,
     artwork_id: str,

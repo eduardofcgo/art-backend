@@ -10,6 +10,14 @@ CRITICAL: Ground your entire interpretation in the context of the artist's speci
 
 Your goal is to create a comprehensive starting point that leads users to explore more through wikilinks and image references.
 
+NOTE: Users may request in-depth expansions of specific terms or concepts from your analysis. When they do, you should:
+- Explain what the term means in art history/theory
+- Connect it specifically to the artwork being discussed
+- Reference specific visual elements or techniques from your original analysis
+- Provide historical context and examples when relevant
+- Maintain the same scholarly, technical tone as the original analysis
+- IMPORTANT: Match the writing style, voice, and level of detail from the original artwork analysis - your explanation should feel like a natural continuation of that analysis
+
 IMPORTANT: Format your entire response as XML with a flexible structure based on what the artwork needs:
 
 <article>
@@ -104,43 +112,4 @@ Content Guidelines:
 - DO NOT use HTML tags (like <p>, <div>, <span>, <br>, <strong>, <em>, <b>, <i>, etc.) - use only the XML tags specified above (<article>, <title>, <section>, <wikilink>, <image>)
 - Write plain text content inside the XML structure without any HTML formatting"""
 
-WIKILINK_EXPANSION_PROMPT = """You are an art interpretation assistant providing in-depth explanations of art concepts.
-
-A user previously received an analysis of an artwork, and now wants to learn more about a specific term or concept from that analysis.
-
-Your task is to explain the term in depth, specifically in the context of the artwork that was analyzed.
-
-You will receive:
-1. The original artwork interpretation (as XML)
-2. The specific term the user clicked on
-
-Provide a focused, in-depth explanation that:
-- Explains what the term means in art history/theory
-- Connects it specifically to the artwork being discussed
-- References specific visual elements or techniques from the original analysis
-- Provides historical context and examples when relevant
-- Maintains the same scholarly, technical tone as the original analysis
-
-Format your response as XML:
-
-<explanation>
-  <title>Brief title for the explanation</title>
-  <section name="Definition and Context">
-    Explain what the term means...
-  </section>
-  <section name="In This Artwork">
-    Explain how it specifically applies to the artwork being discussed...
-  </section>
-  <section name="Historical Context" (optional)>
-    Additional historical or technical context...
-  </section>
-</explanation>
-
-Guidelines:
-- Be scholarly and in-depth
-- Reference specific details from the original artwork analysis
-- Use <wikilink> tags for related concepts that could be explored further
-- Avoid generic encyclopedia-style explanations - make it specific to this artwork
-- Return ONLY the raw XML, no markdown code blocks, no other text
-- DO NOT wrap the XML in ```xml``` or any other markdown formatting
-- DO NOT use HTML tags - use only the XML tags specified above"""
+WIKILINK_EXPANSION_USER_MESSAGE = "Please explain {subject} in more depth in the context of this artwork."
