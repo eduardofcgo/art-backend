@@ -9,20 +9,10 @@ import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import os
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
 
 
-def xml_to_html(xml_content: str, image_path: str, grounding_results=None) -> str:
-    """Convert the XML interpretation to a beautiful HTML document with interactive artwork explorer
-    
-    Args:
-        xml_content: The XML interpretation from the AI
-        image_path: Path to the artwork image
-        grounding_results: Optional list of dicts with 'id', 'x', 'y' from Grounding DINO
-    """
+def xml_to_html(xml_content: str, image_path: str) -> str:
+    """Convert the XML interpretation to a beautiful HTML document with interactive artwork explorer"""
 
     try:
         root = ET.fromstring(xml_content.strip())
@@ -36,38 +26,15 @@ def xml_to_html(xml_content: str, image_path: str, grounding_results=None) -> st
     # Extract spatial details
     details_element = root.find("details")
     spatial_details = []
-    queries_for_grounding = []
-    
     if details_element is not None:
-        for idx, detail in enumerate(details_element.findall("detail")):
-            query = detail.get("query", "")
-            
-            # If query exists, store it for potential grounding
-            if query:
-                queries_for_grounding.append({
-                    "id": idx,
-                    "query": query,
-                    "title": detail.get("title", "Detail")
-                })
-            
+        for detail in details_element.findall("detail"):
             spatial_details.append({
-                "x": detail.get("x", "50"),  # Will be updated by grounding if used
+                "x": detail.get("x", "50"),
                 "y": detail.get("y", "50"),
-                "query": query,
+                "region": detail.get("region", ""),
                 "title": detail.get("title", "Detail"),
-                "description": detail.text or "",
-                "box": None  # Will be updated by grounding if used
+                "description": detail.text or ""
             })
-    
-    # Update coordinates from grounding results if provided
-    if grounding_results:
-        for result in grounding_results:
-            idx = result.get("id")
-            if idx < len(spatial_details):
-                spatial_details[idx]["x"] = str(result.get("x", 50))
-                spatial_details[idx]["y"] = str(result.get("y", 50))
-                spatial_details[idx]["confidence"] = result.get("confidence", 0)
-                spatial_details[idx]["box"] = result.get("box")
     
     # Generate JSON for spatial details
     import json
@@ -393,7 +360,7 @@ def xml_to_html(xml_content: str, image_path: str, grounding_results=None) -> st
             position: relative;
             background: #000;
             border-radius: 8px;
-            overflow: visible;
+            overflow: hidden;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }}
         
@@ -405,35 +372,34 @@ def xml_to_html(xml_content: str, image_path: str, grounding_results=None) -> st
         
         .hotspot {{
             position: absolute;
-            background: rgba(102, 126, 234, 0.15);
-            border: 3px solid rgba(102, 126, 234, 0.8);
+            width: 24px;
+            height: 24px;
+            margin-left: -12px;
+            margin-top: -12px;
+            background: rgba(102, 126, 234, 0.9);
+            border: 3px solid white;
+            border-radius: 50%;
             cursor: pointer;
             transition: all 0.3s ease;
             animation: pulse 2s infinite;
             z-index: 10;
-            display: flex;
-            align-items: flex-start;
-            justify-content: flex-start;
-            padding: 4px;
         }}
         
         .hotspot:hover {{
-            background: rgba(118, 75, 162, 0.25);
-            border-color: rgba(118, 75, 162, 1);
-            border-width: 4px;
+            background: rgba(118, 75, 162, 1);
+            transform: scale(1.3);
             animation: none;
         }}
         
         .hotspot.active {{
-            background: rgba(118, 75, 162, 0.3);
-            border-color: rgba(118, 75, 162, 1);
-            border-width: 4px;
+            background: rgba(118, 75, 162, 1);
+            transform: scale(1.3);
             animation: none;
         }}
         
         @keyframes pulse {{
             0%, 100% {{
-                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.6);
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
             }}
             50% {{
                 box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
@@ -441,23 +407,14 @@ def xml_to_html(xml_content: str, image_path: str, grounding_results=None) -> st
         }}
         
         .hotspot-number {{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             color: white;
-            font-size: 16px;
+            font-size: 11px;
             font-weight: bold;
             font-family: Arial, sans-serif;
-            background: rgba(102, 126, 234, 0.95);
-            min-width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }}
-        
-        .hotspot:hover .hotspot-number,
-        .hotspot.active .hotspot-number {{
-            background: rgba(118, 75, 162, 1);
         }}
         
         .detail-panel {{
@@ -556,12 +513,6 @@ def xml_to_html(xml_content: str, image_path: str, grounding_results=None) -> st
             .detail-panel {{
                 padding: 20px;
             }}
-            
-            .hotspot-number {{
-                font-size: 18px;
-                min-width: 32px;
-                height: 32px;
-            }}
         }}
     </style>
 </head>
@@ -613,47 +564,15 @@ def xml_to_html(xml_content: str, image_path: str, grounding_results=None) -> st
             
             // Wait for image to load
             image.onload = function() {{
-                console.log('Image loaded, creating', spatialDetails.length, 'hotspots');
-                
                 // Create hotspots
                 spatialDetails.forEach((detail, index) => {{
                     const hotspot = document.createElement('div');
                     hotspot.className = 'hotspot';
+                    hotspot.style.left = detail.x + '%';
+                    hotspot.style.top = detail.y + '%';
                     hotspot.dataset.index = index;
-                    hotspot.setAttribute('title', detail.title); // Tooltip
                     
-                    // Debug log
-                    console.log(`Detail ${{index + 1}} (${{detail.title}}):`, {{
-                        x: detail.x,
-                        y: detail.y,
-                        box: detail.box
-                    }});
-                    
-                    // If we have bounding box data, use it to size and position the hotspot
-                    if (detail.box && detail.box.x1 !== undefined) {{
-                        const x1 = detail.box.x1;
-                        const y1 = detail.box.y1;
-                        const x2 = detail.box.x2;
-                        const y2 = detail.box.y2;
-                        const width = x2 - x1;
-                        const height = y2 - y1;
-                        
-                        console.log(`  → Box: [${{x1}}, ${{y1}}, ${{x2}}, ${{y2}}] → W:${{width}}, H:${{height}}`);
-                        
-                        hotspot.style.left = x1 + '%';
-                        hotspot.style.top = y1 + '%';
-                        hotspot.style.width = width + '%';
-                        hotspot.style.height = height + '%';
-                    }} else {{
-                        // Fallback: use center point with fixed size
-                        console.log(`  → Using fallback positioning at center (${{detail.x}}%, ${{detail.y}}%)`);
-                        hotspot.style.left = 'calc(' + detail.x + '% - 35px)';
-                        hotspot.style.top = 'calc(' + detail.y + '% - 35px)';
-                        hotspot.style.width = '70px';
-                        hotspot.style.height = '70px';
-                    }}
-                    
-                    const number = document.createElement('div');
+                    const number = document.createElement('span');
                     number.className = 'hotspot-number';
                     number.textContent = index + 1;
                     hotspot.appendChild(number);
@@ -706,23 +625,14 @@ def xml_to_html(xml_content: str, image_path: str, grounding_results=None) -> st
     return html
 
 
-def test_interpret_art(image_path: str, api_url: str = "http://localhost:8000", use_grounding: bool = False):
-    """Test the art interpretation endpoint
-    
-    Args:
-        image_path: Path to the artwork image
-        api_url: URL of the API server
-        use_grounding: If True, use Grounding DINO to localize details (requires REPLICATE_API_TOKEN)
-    """
+def test_interpret_art(image_path: str, api_url: str = "http://localhost:8000"):
+    """Test the art interpretation endpoint"""
 
     endpoint = f"{api_url}/api/ai/artwork/explain"
 
     print(f"Testing art interpretation API...")
     print(f"Image: {image_path}")
-    print(f"Endpoint: {endpoint}")
-    if use_grounding:
-        print(f"🎯 Grounding DINO localization: ENABLED")
-    print()
+    print(f"Endpoint: {endpoint}\n")
 
     try:
         with open(image_path, "rb") as image_file:
@@ -733,68 +643,8 @@ def test_interpret_art(image_path: str, api_url: str = "http://localhost:8000", 
             xml_content = response.text
             print("✅ Success! Received XML interpretation\n")
 
-            grounding_results = None
-            
-            # Optionally use Grounding DINO for precise localization
-            if use_grounding:
-                print("🔍 Localizing details with Grounding DINO...")
-                try:
-                    from services.grounding_service import GroundingDINOService
-                    from config.settings import Settings
-                    import xml.etree.ElementTree as ET
-                    
-                    # Load settings to get Replicate token
-                    settings = Settings()
-                    
-                    # Parse XML to extract queries
-                    root = ET.fromstring(xml_content.strip())
-                    details_element = root.find("details")
-                    
-                    if details_element is not None:
-                        queries = []
-                        for idx, detail in enumerate(details_element.findall("detail")):
-                            query = detail.get("query", "")
-                            if query:
-                                queries.append({
-                                    "id": idx,
-                                    "query": query,
-                                    "title": detail.get("title", "Detail")
-                                })
-                        
-                        if queries:
-                            # Show queries being sent
-                            print(f"📋 Queries to localize ({len(queries)} total):")
-                            for q in queries:
-                                print(f"   {q['id']+1}. \"{q['query']}\" → {q['title']}")
-                            print()
-                            
-                            grounding_service = GroundingDINOService(settings.REPLICATE_API_TOKEN)
-                            grounding_results = grounding_service.localize_queries(image_path, queries)
-                            
-                            print(f"✅ Localized {len(grounding_results)} details")
-                            for result in grounding_results:
-                                conf = result.get("confidence", 0)
-                                status = "✓" if conf > 0.3 else "⚠"
-                                error_msg = f" [{result.get('error')}]" if result.get('error') else ""
-                                print(f"   {status} {result['title']}: ({result['x']:.1f}%, {result['y']:.1f}%) conf={conf:.2f}{error_msg}")
-                            print()
-                        else:
-                            print("⚠️  No queries found in XML (LLM may not have generated 'query' attributes)\n")
-                            print("   Check the XML file to see if <detail query=\"...\"> attributes exist\n")
-                    
-                except ImportError:
-                    print("⚠️  Grounding service not available. Install with: pip install replicate")
-                    print("   Falling back to center positions\n")
-                except ValueError as e:
-                    print(f"⚠️  {e}")
-                    print("   Add REPLICATE_API_TOKEN to your .env file")
-                    print("   Falling back to center positions\n")
-                except Exception as e:
-                    print(f"⚠️  Grounding failed: {e}")
-                    print("   Falling back to center positions\n")
-
             # Convert XML to HTML
-            html_content = xml_to_html(xml_content, image_path, grounding_results)
+            html_content = xml_to_html(xml_content, image_path)
 
             # Generate output filenames (same base name, different extensions)
             base_name = os.path.splitext(os.path.basename(image_path))[0]
@@ -840,19 +690,9 @@ def test_interpret_art(image_path: str, api_url: str = "http://localhost:8000", 
 if __name__ == "__main__":
     # Then test art interpretation if image path is provided
     if len(sys.argv) < 2:
-        print("Usage: python test_api.py <path_to_image> [--ground]")
-        print("\nOptions:")
-        print("  --ground    Use Grounding DINO for precise localization (requires REPLICATE_API_TOKEN)")
-        print("\nExamples:")
-        print("  python test_api.py artwork.jpg")
-        print("  python test_api.py artwork.jpg --ground")
-        print("\nSetup Replicate:")
-        print("  1. Get API token from https://replicate.com")
-        print("  2. export REPLICATE_API_TOKEN=your_token_here")
-        print("  3. pip install replicate")
+        print("Usage: python test_api.py <path_to_image>")
+        print("Example: python test_api.py artwork.jpg")
         sys.exit(1)
 
     image_path = sys.argv[1]
-    use_grounding = "--ground" in sys.argv
-    
-    test_interpret_art(image_path, use_grounding=use_grounding)
+    test_interpret_art(image_path)

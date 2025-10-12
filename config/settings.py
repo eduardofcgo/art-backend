@@ -31,7 +31,6 @@ class Settings:
         self.OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
         self.GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
         self.ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
-        self.REPLICATE_API_TOKEN: str = os.getenv("REPLICATE_API_TOKEN", "")
 
         # Validate on initialization
         self.validate()

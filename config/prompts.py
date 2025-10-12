@@ -16,8 +16,8 @@ IMPORTANT: Format your entire response as XML with a flexible structure based on
   <title>Brief title for the artwork analysis</title>
   
   <details>
-    <detail query="woman's face" title="Brief title">Symbolic/contextual interpretation of this area</detail>
-    <detail query="red brushstrokes in upper right" title="Another detail">Meaning and significance of this element</detail>
+    <detail x="25" y="30" region="upper-left" title="Brief title">Description of this specific detail visible at this location</detail>
+    <detail x="70" y="50" region="right-center" title="Another detail">Description of what's visible here</detail>
     <!-- Add 8-15 details covering various regions of the artwork -->
   </details>
   
@@ -46,13 +46,10 @@ Spatial Details Guidelines (<details> section):
 - The <details> section MUST be the first element after <title> in the XML
 - Include 8-15 <detail> tags covering various regions of the artwork
 - Each detail should map to a specific visible element in the artwork
-- Use the query attribute to provide a SHORT, CONCRETE description for object detection (Grounding DINO):
-  * Keep it SIMPLE and LITERAL - describe what's visually there
-  * Good: "woman's face", "red brushstrokes", "dark shadow area", "geometric forms"
-  * Add location hints if needed: "face in center", "red area in upper right", "shadow in bottom left"
-  * Avoid: abstract concepts, emotions, interpretations, art terms
-  * Think: What would you tell someone to point at in the image?
-  * 2-6 words maximum - shorter is often better
+- Use x and y attributes as percentage coordinates (0-100) representing the approximate center of the detail:
+  * x: horizontal position (0 = left edge, 50 = center, 100 = right edge)
+  * y: vertical position (0 = top edge, 50 = center, 100 = bottom edge)
+- Use the region attribute for general location reference (e.g., "upper-left", "center", "lower-right", "top-center", "left", "right", "bottom")
 - Use the title attribute for a brief INTERPRETIVE label (2-6 words) that conveys MEANING, not literal description:
   * GOOD: "Disjointed Construction", "Symbolic Isolation", "Chromatic Tension", "Existential Void"
   * BAD: "Fragmented Leg", "Dark Shadow", "Red Paint", "Woman's Face"
@@ -66,12 +63,10 @@ Spatial Details Guidelines (<details> section):
   * DO NOT simply describe what the viewer can already see
 - Cover the entire composition - include foreground, midground, background, and edges
 - Examples of good details:
-  * <detail query="face looking left" title="Psychological Alienation">This deliberate avoidance of direct eye contact symbolizes the subject's inner turmoil and social alienation, a recurring theme in the artist's exploration of modern psychological isolation.</detail>
-  * <detail query="dark shadow bottom left" title="Mortality's Shadow">The heavy shadowing in this corner represents mortality and the unconscious, drawing from Baroque traditions of chiaroscuro to evoke existential dread.</detail>
-  * <detail query="red brushstrokes upper right" title="Emotional Dissonance">The jarring red tones signal passion and violence, reflecting the Expressionist belief that color should convey psychological states rather than realistic appearance.</detail>
-  * <detail query="angular geometric forms" title="Disjointed Construction">The fragmented, angular forms challenge spatial coherence, reflecting Cubist deconstruction of perspective and the fractured nature of modern consciousness.</detail>
-  * <detail query="hand holding object" title="Symbolic Gesture">The positioning of the hands...</detail>
-  * <detail query="background landscape" title="Environmental Context">The setting beyond the main subject...</detail>
+  * <detail x="45" y="25" region="upper-center" title="Psychological Alienation">This deliberate avoidance of direct eye contact symbolizes the subject's inner turmoil and social alienation, a recurring theme in the artist's exploration of modern psychological isolation.</detail>
+  * <detail x="15" y="70" region="lower-left" title="Mortality's Shadow">The heavy shadowing in this corner represents mortality and the unconscious, drawing from Baroque traditions of chiaroscuro to evoke existential dread.</detail>
+  * <detail x="70" y="40" region="right-center" title="Emotional Dissonance">The jarring red tones here signal passion and violence, reflecting the Expressionist belief that color should convey psychological states rather than realistic appearance.</detail>
+  * <detail x="30" y="55" region="left-center" title="Disjointed Construction">The fragmented, angular forms challenge spatial coherence, reflecting Cubist deconstruction of perspective and the fractured nature of modern consciousness.</detail>
 
 Key Topics to Consider (when relevant to the artwork):
 - Artist/Author Information: Identity of the creator, biographical context, their artistic period, and significant aspects of their practice. This should inform the entire analysis.
