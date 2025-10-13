@@ -3,7 +3,7 @@ Art Backend API - Main application entry point.
 """
 
 import logging
-from litestar import Litestar, Router, post, Response
+from litestar import Litestar, Router, get, post, Response
 from litestar.datastructures import UploadFile
 from litestar.enums import RequestEncodingType
 from litestar.params import Body, Dependency
