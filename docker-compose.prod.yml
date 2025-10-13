@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  art-backend:
+    # This will use the pre-built image from GitHub Container Registry
+    # Replace <your-github-username> with your actual GitHub username
+    image: ghcr.io/<your-github-username>/art-backend:latest
+    container_name: art-backend-prod
+    ports:
+      - "8000:8000"
+    environment:
+      # Set your AI provider (openai, gemini, or anthropic)
+      - AI_PROVIDER=${AI_PROVIDER:-gemini}
+      # API Keys - set these in your .env.production file or pass them here
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    env_file:
+      - .env.production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.post('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+

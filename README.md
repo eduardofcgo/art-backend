@@ -196,9 +196,42 @@ The API includes comprehensive error handling:
 - API errors are gracefully handled
 - Detailed error messages for debugging
 
-## Production Deployment
+## Docker Deployment
 
-For production deployment:
+### Local Development with Docker
+
+Build and run with Docker:
+```bash
+# Build the image
+docker build -t art-backend .
+
+# Run with Docker Compose
+docker-compose up -d
+```
+
+### Production Deployment
+
+The project includes automated Docker image builds via GitHub Actions. When you push to the `main` branch, a Docker image is automatically built and published to GitHub Container Registry (GHCR).
+
+**Using the pre-built image:**
+```bash
+# Pull the latest image (replace <your-github-username> with your GitHub username)
+docker pull ghcr.io/<your-github-username>/art-backend:latest
+
+# Run in production
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+**Image tags available:**
+- `latest` - Most recent build from main
+- `main-<commit-sha>` - Specific commit version
+- `main` - Latest from main branch
+
+For detailed deployment instructions including Kubernetes, cloud platforms, and CI/CD setup, see [DEPLOYMENT.md](DEPLOYMENT.md).
+
+### Manual Production Deployment (without Docker)
+
+For production deployment without Docker:
 
 1. Update CORS configuration with your frontend domain
 2. Use a production ASGI server like Gunicorn with Uvicorn workers:

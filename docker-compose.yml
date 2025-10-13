@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  art-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: art-backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Set your AI provider (openai, gemini, or anthropic)
+      - AI_PROVIDER=${AI_PROVIDER:-gemini}
+      # API Keys - set these in your .env file or pass them here
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    env_file:
+      - .env
+    volumes:
+      # Mount the current directory for development (optional - comment out for production)
+      - .:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.post('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+

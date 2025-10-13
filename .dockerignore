@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Environment
+.env
+.env.local
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Documentation
+*.md
+CONFIGURATION.md
+LOGGING.md
+QUICKSTART.md
+WIKILINK_CACHING.md
+
+# Sample/test images
+*.jpg
+*.png
+*.jpeg
+*.gif
+
+# Generated files
+*.xml
+*.html
+interpretation_*
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
