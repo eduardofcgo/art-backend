@@ -227,6 +227,9 @@ docker-compose -f docker-compose.prod.yml up -d
 - `main-<commit-sha>` - Specific commit version
 - `main` - Latest from main branch
 
+**For private repositories:**
+The Docker images are automatically private. See [PRIVATE_IMAGE_SETUP.md](PRIVATE_IMAGE_SETUP.md) for a quick guide on authentication and deployment.
+
 For detailed deployment instructions including Kubernetes, cloud platforms, and CI/CD setup, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Manual Production Deployment (without Docker)

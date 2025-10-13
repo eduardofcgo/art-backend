@@ -23,18 +23,46 @@ ghcr.io/<your-github-username>/art-backend:latest
 
 Replace `<your-github-username>` with your actual GitHub username or organization name.
 
+### Authenticating with GitHub Container Registry (for Private Images)
+
+If your repository is private, the container images will also be private. To pull them in production, you need to authenticate:
+
+#### 1. Create a GitHub Personal Access Token (PAT)
+
+1. Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Click "Generate new token (classic)"
+3. Give it a descriptive name (e.g., "Production Server - art-backend")
+4. Select scopes:
+   - ✅ `read:packages` - Download packages from GitHub Package Registry
+5. Click "Generate token"
+6. **Copy the token immediately** (you won't see it again!)
+
+#### 2. Login to GHCR on Your Production Server
+
+```bash
+# Method 1: Using docker login
+echo YOUR_GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+
+# Method 2: Using environment variable
+export CR_PAT=YOUR_GITHUB_PAT
+echo $CR_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+```
+
+Once authenticated, you can pull private images.
+
 ## Production Deployment
 
 ### Option 1: Pull and Run Directly
 
 ```bash
-# Login to GitHub Container Registry (if the repo is private)
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+# Step 1: Login to GitHub Container Registry (required for private repos)
+export GITHUB_PAT=your_personal_access_token_here
+echo $GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 
-# Pull the latest image
+# Step 2: Pull the latest image
 docker pull ghcr.io/<your-github-username>/art-backend:latest
 
-# Run the container
+# Step 3: Run the container
 docker run -d \
   --name art-backend \
   -p 8000:8000 \
@@ -74,10 +102,32 @@ services:
 
 Deploy with:
 ```bash
+# First, login to GHCR (for private images)
+echo $GITHUB_PAT | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+
+# Then deploy
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
+**Note**: Docker Compose will use your authenticated credentials automatically after you've logged in.
+
 ### Option 3: Kubernetes Deployment
+
+For private images, you need to create an image pull secret first:
+
+```bash
+# Create a secret for pulling private images from GHCR
+kubectl create secret docker-registry ghcr-secret \
+  --docker-server=ghcr.io \
+  --docker-username=YOUR_GITHUB_USERNAME \
+  --docker-password=YOUR_GITHUB_PAT \
+  --docker-email=your-email@example.com
+
+# Or using a secret from a file
+kubectl create secret generic art-backend-secrets \
+  --from-literal=ai-provider=gemini \
+  --from-literal=google-api-key=YOUR_GOOGLE_API_KEY
+```
 
 Create a `k8s-deployment.yaml`:
 
@@ -98,6 +148,8 @@ spec:
       labels:
         app: art-backend
     spec:
+      imagePullSecrets:
+      - name: ghcr-secret  # Required for private images
       containers:
       - name: art-backend
         image: ghcr.io/<your-github-username>/art-backend:latest
@@ -146,27 +198,60 @@ Deploy with:
 kubectl apply -f k8s-deployment.yaml
 ```
 
-### Option 4: Cloud Platforms
+### Option 4: Cloud Platforms (with Private Images)
 
 #### AWS ECS/Fargate
-Use the image URL: `ghcr.io/<your-github-username>/art-backend:latest`
+
+For private GHCR images, create a secret in AWS Secrets Manager:
+
+```bash
+# 1. Create a secret with your GitHub PAT
+aws secretsmanager create-secret \
+  --name ghcr-credentials \
+  --description "GitHub Container Registry credentials" \
+  --secret-string '{"username":"YOUR_GITHUB_USERNAME","password":"YOUR_GITHUB_PAT"}'
+
+# 2. Update your ECS task definition to reference the secret for authentication
+# In your task definition JSON:
+{
+  "containerDefinitions": [{
+    "image": "ghcr.io/<your-github-username>/art-backend:latest",
+    "repositoryCredentials": {
+      "credentialsParameter": "arn:aws:secretsmanager:region:account-id:secret:ghcr-credentials"
+    }
+  }]
+}
+```
 
 #### Google Cloud Run
+
 ```bash
+# 1. Create a service account key with access to GHCR
+# 2. Create a secret in Google Secret Manager with your GitHub PAT
+
+# 3. Deploy with authentication
 gcloud run deploy art-backend \
   --image ghcr.io/<your-github-username>/art-backend:latest \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
   --set-env-vars AI_PROVIDER=gemini,GOOGLE_API_KEY=your_key
+
+# For private images, you may need to use Artifact Registry as a mirror
+# or configure docker credentials in Cloud Build
 ```
 
 #### Azure Container Instances
+
 ```bash
+# 1. Create a registry credential secret
 az container create \
   --resource-group myResourceGroup \
   --name art-backend \
   --image ghcr.io/<your-github-username>/art-backend:latest \
+  --registry-login-server ghcr.io \
+  --registry-username YOUR_GITHUB_USERNAME \
+  --registry-password YOUR_GITHUB_PAT \
   --dns-name-label art-backend \
   --ports 8000 \
   --environment-variables AI_PROVIDER=gemini GOOGLE_API_KEY=your_key
