@@ -93,7 +93,7 @@ ai_router = Router(
 
 
 # Health check endpoint
-@post("/health", status_code=HTTP_200_OK)
+@get("/health", status_code=HTTP_200_OK)
 async def health_check() -> str:
     """Health check endpoint"""
     return Response(content="healthy", media_type="text/plain", status_code=HTTP_200_OK)
