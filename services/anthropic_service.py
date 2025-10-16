@@ -87,19 +87,20 @@ class AnthropicService:
             logger.error(f"Error in Anthropic API call: {str(e)}", exc_info=True)
             raise
 
-    async def interpret_artwork_with_cache(self, image_data: bytes, cache_name: str) -> ArtworkExplanation:
+    async def interpret_artwork_with_cache(
+        self, image_data: bytes, cache_name: str
+    ) -> ArtworkExplanation:
         """
         Anthropic supports prompt caching but implementation is more complex.
         For now, fall back to regular interpretation.
-        
+
         TODO: Implement Anthropic's prompt caching feature.
         """
-        logger.info("Anthropic: Using regular interpretation (caching not yet implemented)")
-        interpretation = await self.explain_artwork(image_data)
-        return ArtworkExplanation(
-            explanation_xml=interpretation,
-            cache_id=cache_name
+        logger.info(
+            "Anthropic: Using regular interpretation (caching not yet implemented)"
         )
+        interpretation = await self.explain_artwork(image_data)
+        return ArtworkExplanation(explanation_xml=interpretation, cache_id=cache_name)
 
     async def expand_subject(
         self,
@@ -111,7 +112,7 @@ class AnthropicService:
         Expand on a subject/term using text-only context.
         """
         logger.info(f"Anthropic: Expanding subject '{subject}' with text-only context")
-        
+
         try:
             # Create a fake conversation where the AI already provided the original analysis
             response = self.client.messages.create(
@@ -122,16 +123,23 @@ class AnthropicService:
                 messages=[
                     {"role": "user", "content": "Please analyze this artwork."},
                     {"role": "assistant", "content": original_artwork_explanation},
-                    {"role": "user", "content": WIKILINK_EXPANSION_USER_MESSAGE.format(subject=subject)},
+                    {
+                        "role": "user",
+                        "content": WIKILINK_EXPANSION_USER_MESSAGE.format(
+                            subject=subject
+                        ),
+                    },
                 ],
             )
             logger.info("Received explanation response from Anthropic API")
-            
+
             raw_content = response.content[0].text
             cleaned_xml = clean_xml_response(raw_content)
             logger.info("XML explanation cleaned and validated")
             return cleaned_xml
-            
+
         except Exception as e:
-            logger.error(f"Error explaining term with Anthropic: {str(e)}", exc_info=True)
+            logger.error(
+                f"Error explaining term with Anthropic: {str(e)}", exc_info=True
+            )
             raise

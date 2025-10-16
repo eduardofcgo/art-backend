@@ -31,19 +31,19 @@ class AIService(Protocol):
         self,
         artwork_id: str,
         original_artwork_explanation: str,
-        subject: str, 
+        subject: str,
     ) -> str:
         """
         Expand on a subject/term in the context of the original artwork.
-        
+
         Args:
             artwork_id: The artwork ID to reuse cached image context
             original_artwork_explanation: The original XML interpretation
             subject: The subject to expand on
-            
+
         Returns:
             Clean XML explanation
-            
+
         Raises:
             Exception: If AI API call fails
         """

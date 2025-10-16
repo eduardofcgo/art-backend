@@ -22,22 +22,25 @@ def xml_to_html(xml_content: str, image_path: str) -> str:
     # Extract title from XML
     title = root.find("title")
     title_text = title.text if title is not None else "Art Interpretation"
-    
+
     # Extract spatial details
     details_element = root.find("details")
     spatial_details = []
     if details_element is not None:
         for detail in details_element.findall("detail"):
-            spatial_details.append({
-                "x": detail.get("x", "50"),
-                "y": detail.get("y", "50"),
-                "region": detail.get("region", ""),
-                "title": detail.get("title", "Detail"),
-                "description": detail.text or ""
-            })
-    
+            spatial_details.append(
+                {
+                    "x": detail.get("x", "50"),
+                    "y": detail.get("y", "50"),
+                    "region": detail.get("region", ""),
+                    "title": detail.get("title", "Detail"),
+                    "description": detail.text or "",
+                }
+            )
+
     # Generate JSON for spatial details
     import json
+
     spatial_details_json = json.dumps(spatial_details)
 
     def process_content(element, level=0):
@@ -134,21 +137,22 @@ def xml_to_html(xml_content: str, image_path: str) -> str:
 
     # Convert image to base64 for embedding
     import base64
+
     try:
         with open(image_path, "rb") as img_file:
             image_data = base64.b64encode(img_file.read()).decode()
             image_ext = os.path.splitext(image_path)[1].lower()
             mime_type = {
-                '.jpg': 'image/jpeg',
-                '.jpeg': 'image/jpeg',
-                '.png': 'image/png',
-                '.gif': 'image/gif',
-                '.webp': 'image/webp'
-            }.get(image_ext, 'image/jpeg')
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".png": "image/png",
+                ".gif": "image/gif",
+                ".webp": "image/webp",
+            }.get(image_ext, "image/jpeg")
             embedded_image = f"data:{mime_type};base64,{image_data}"
     except:
         embedded_image = ""
-    
+
     # Create HTML document
     html = f"""<!DOCTYPE html>
 <html lang="en">

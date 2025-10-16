@@ -3,24 +3,31 @@ Art Backend API - Main application entry point.
 """
 
 import logging
-from litestar import Litestar, Router, get, post, Response
-from litestar.datastructures import UploadFile
-from litestar.enums import RequestEncodingType
-from litestar.params import Body, Dependency
+from litestar import Litestar, Router, get, Response
 from litestar.config.cors import CORSConfig
 from litestar.logging import LoggingConfig
 from litestar.status_codes import HTTP_200_OK
 from litestar.di import Provide
+from litestar.security.jwt import JWTAuth, Token
+from typing import Optional
 
-from controllers.art_controller import (
-    explain_artwork_handler,
-    expand_subject_handler,
-    ExpandSubjectRequest,
+from controllers.artwork_controller import (
+    explain_artwork,
+    expand_subject,
+    get_artwork,
+    get_artwork_image,
+    get_expansion,
+    get_user_artworks,
 )
-from middleware.error_handler import value_error_handler, generic_exception_handler
-from dependencies import get_ai_service, get_settings
+from middleware.auth import create_auth
+from dependencies import get_ai_service, get_settings, authenticated_user_provider
+from dependencies.repository_provider import (
+    get_artwork_repository,
+    initialize_database,
+    shutdown_database,
+)
+from dependencies.storage_provider import artwork_storage_provider
 from config.settings import Settings
-from services.base import AIService
 
 # Configure logging with Litestar's LoggingConfig
 logging_config = LoggingConfig(
@@ -40,53 +47,38 @@ logging_config = LoggingConfig(
 logger = logging.getLogger(__name__)
 
 
-@post("/artwork/explain")
-async def explain_artwork(
-    data: UploadFile = Body(media_type=RequestEncodingType.MULTI_PART),
-    ai_service: AIService = Dependency(),
-) -> Response:
-    """
-    Endpoint to explain artwork from an uploaded image using AI vision models.
+def _retrieve_user(token: Token, connection) -> Optional[str]:
+    user_id = token.sub if token.sub else None
 
-    The AI provider is configured via the AI_PROVIDER environment variable.
-    Supported providers: openai, gemini, anthropic
+    # The return value is automatically made available as request.user
+    return user_id
 
-    Accepts: multipart/form-data with an image file
-    Returns: XML with the artwork explanation
-    """
-    return await explain_artwork_handler(data, ai_service=ai_service)
-
-@post("/artwork/{artwork_id:str}/subject")
-async def expand_subject(
-    data: ExpandSubjectRequest,
-    artwork_id: str,
-    ai_service: AIService = Dependency(),
-) -> Response:
-    """
-    Endpoint to expand on a wikilink subject in the context of the original artwork.
-    
-    This endpoint reuses the cached image context from the original artwork interpretation.
-    
-    Path parameter:
-        artwork_id: The cache identifier returned from the initial artwork explanation
-    
-    Request body:
-    {
-        "subject": "Impressionism"
-    }
-    
-    Returns: XML with the in-depth subject expansion
-    """
-    return await expand_subject_handler(data, artwork_id, ai_service=ai_service)
+# Create authentication middleware
+auth = create_auth(
+    token_secret=Settings().SUPABASE_JWT_SECRET,
+    default_token_expiration=3600,  # 1 hour
+)
 
 
-# Create AI router with shared dependencies
-# All routes in this router automatically get ai_service and settings injected
-ai_router = Router(
-    path="/api/ai",
-    route_handlers=[explain_artwork, expand_subject],
+# Create API router with shared dependencies for all /api/* routes
+# All API routes automatically get repository, settings, storage_service, and authenticated_user injected
+api_router = Router(
+    path="/api",
+    route_handlers=[get_artwork, get_artwork_image, get_expansion, get_user_artworks],
     dependencies={
         "settings": Provide(get_settings, sync_to_thread=False),
+        "repository": Provide(get_artwork_repository, sync_to_thread=False),
+        "storage_service": artwork_storage_provider,
+        "authenticated_user": authenticated_user_provider,
+    },
+)
+
+# Create AI router with shared dependencies
+# All routes in this router automatically get ai_service injected (settings and authenticated_user inherited from parent)
+ai_router = Router(
+    path="/ai",
+    route_handlers=[explain_artwork, expand_subject],
+    dependencies={
         "ai_service": Provide(get_ai_service, sync_to_thread=False),
     },
 )
@@ -106,14 +98,34 @@ cors_config = CORSConfig(
     allow_headers=["*"],
 )
 
+
+# Application lifecycle event handlers
+async def startup() -> None:
+    """Initialize database on application startup."""
+    logger.info("Initializing database...")
+    settings = Settings()
+    await initialize_database(settings)
+    logger.info("Database initialized successfully")
+
+
+async def shutdown() -> None:
+    """Cleanup database connections on application shutdown."""
+    logger.info("Shutting down database connections...")
+    await shutdown_database()
+    logger.info("Database connections closed")
+
+
+# Register ai_router as a child of api_router
+api_router.register(ai_router)
+
 # Create Litestar app with routers and exception handlers
 app = Litestar(
-    route_handlers=[ai_router, health_check],
+    route_handlers=[api_router, health_check],
     cors_config=cors_config,
     logging_config=logging_config,
-    exception_handlers={
-        ValueError: value_error_handler,
-        Exception: generic_exception_handler,
-    },
+    on_app_init=[auth.on_app_init],
+    on_startup=[startup],
+    on_shutdown=[shutdown],
+    middleware=[auth.middleware],
     debug=True,  # Enable debug mode for detailed error logging
 )

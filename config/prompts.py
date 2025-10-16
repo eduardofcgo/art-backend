@@ -112,4 +112,6 @@ Content Guidelines:
 - DO NOT use HTML tags (like <p>, <div>, <span>, <br>, <strong>, <em>, <b>, <i>, etc.) - use only the XML tags specified above (<article>, <title>, <section>, <wikilink>, <image>)
 - Write plain text content inside the XML structure without any HTML formatting"""
 
-WIKILINK_EXPANSION_USER_MESSAGE = "Please explain {subject} in more depth in the context of this artwork."
+WIKILINK_EXPANSION_USER_MESSAGE = (
+    "Please explain {subject} in more depth in the context of this artwork."
+)

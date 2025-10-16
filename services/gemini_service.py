@@ -29,20 +29,16 @@ class GeminiService:
         self.model_name = "models/gemini-2.0-flash-001"
         self.safety_settings = [
             types.SafetySetting(
-                category="HARM_CATEGORY_HATE_SPEECH",
-                threshold="BLOCK_NONE"
+                category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"
             ),
             types.SafetySetting(
-                category="HARM_CATEGORY_HARASSMENT",
-                threshold="BLOCK_NONE"
+                category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"
             ),
             types.SafetySetting(
-                category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                threshold="BLOCK_NONE"
+                category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"
             ),
             types.SafetySetting(
-                category="HARM_CATEGORY_DANGEROUS_CONTENT",
-                threshold="BLOCK_NONE"
+                category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"
             ),
         ]
         self.generation_config = types.GenerateContentConfig(
@@ -75,10 +71,11 @@ class GeminiService:
             # Upload image to Gemini Files API
             image_io = io.BytesIO(image_data)
             image_file = self.client.files.upload(
-                file=image_io,
-                config=dict(mime_type='image/jpeg')
+                file=image_io, config=dict(mime_type="image/jpeg")
             )
-            logger.info(f"Image uploaded: {image_file.name}, size={len(image_data)} bytes")
+            logger.info(
+                f"Image uploaded: {image_file.name}, size={len(image_data)} bytes"
+            )
 
             # Make regular API call without caching
             logger.info("Sending request to Gemini API...")
@@ -87,13 +84,15 @@ class GeminiService:
                 contents=types.Content(
                     role="user",
                     parts=[
-                        types.Part.from_uri(file_uri=image_file.uri, mime_type=image_file.mime_type),
-                        types.Part.from_text(text="Please analyze this artwork.")
-                    ]
+                        types.Part.from_uri(
+                            file_uri=image_file.uri, mime_type=image_file.mime_type
+                        ),
+                        types.Part.from_text(text="Please analyze this artwork."),
+                    ],
                 ),
                 config=self.generation_config,
             )
-            
+
             logger.info("Received response from Gemini API")
             logger.info(f"Usage: {response.usage_metadata}")
 
@@ -114,7 +113,7 @@ class GeminiService:
         self,
         artwork_id: str,
         original_artwork_explanation: str,
-        subject: str, 
+        subject: str,
     ) -> str:
         """
         Expand on a subject/term in the context of the original artwork.
@@ -131,7 +130,7 @@ class GeminiService:
             Exception: If Gemini API call fails
         """
         logger.info(f"Gemini: Expanding subject '{subject}' with text-only context")
-        
+
         try:
             # Create a conversation history where the AI already provided the original analysis
             response = self.client.models.generate_content(
@@ -139,30 +138,40 @@ class GeminiService:
                 contents=[
                     types.Content(
                         role="user",
-                        parts=[types.Part.from_text(text="Please analyze this artwork.")]
+                        parts=[
+                            types.Part.from_text(text="Please analyze this artwork.")
+                        ],
                     ),
                     types.Content(
                         role="model",
-                        parts=[types.Part.from_text(text=original_artwork_explanation)]
+                        parts=[types.Part.from_text(text=original_artwork_explanation)],
                     ),
                     types.Content(
                         role="user",
-                        parts=[types.Part.from_text(text=WIKILINK_EXPANSION_USER_MESSAGE.format(subject=subject))]
-                    )
+                        parts=[
+                            types.Part.from_text(
+                                text=WIKILINK_EXPANSION_USER_MESSAGE.format(
+                                    subject=subject
+                                )
+                            )
+                        ],
+                    ),
                 ],
                 config=self.generation_config,
             )
             logger.info("Received response from Gemini API")
             logger.info(f"Usage: {response.usage_metadata}")
-            
+
             raw_content = response.text
             logger.debug(f"Raw response length: {len(raw_content)} characters")
-            
+
             # Clean and return the XML response
             cleaned_xml = clean_xml_response(raw_content)
             logger.info("XML explanation cleaned and validated")
             return cleaned_xml
-            
+
         except Exception as e:
-            logger.error(f"Error expanding subject with Gemini: {str(e)}", exc_info=True)
+            logger.error(
+                f"Error expanding subject with Gemini: {str(e)}", exc_info=True
+            )
             raise

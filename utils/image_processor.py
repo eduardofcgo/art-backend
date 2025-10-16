@@ -9,6 +9,9 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 
+processed_image_content_type = "image/jpeg"
+
+
 async def validate_and_process_image(image_data: bytes, max_size: int = 2000) -> bytes:
     """
     Validate image and resize if too large.

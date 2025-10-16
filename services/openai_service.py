@@ -85,20 +85,21 @@ class OpenAIService:
             logger.error(f"Error in OpenAI API call: {str(e)}", exc_info=True)
             raise
 
-    async def interpret_artwork_with_cache(self, image_data: bytes, cache_name: str) -> ArtworkExplanation:
+    async def interpret_artwork_with_cache(
+        self, image_data: bytes, cache_name: str
+    ) -> ArtworkExplanation:
         """
         OpenAI doesn't support explicit caching in the same way as Gemini.
         Fall back to regular interpretation.
-        
+
         Note: OpenAI does have automatic prompt caching for prompts >1024 tokens,
         but it's automatic and doesn't provide cache IDs for reuse.
         """
-        logger.info("OpenAI: Using regular interpretation (automatic caching may apply)")
-        interpretation = await self.explain_artwork(image_data)
-        return ArtworkExplanation(
-            explanation_xml=interpretation,
-            cache_id=cache_name
+        logger.info(
+            "OpenAI: Using regular interpretation (automatic caching may apply)"
         )
+        interpretation = await self.explain_artwork(image_data)
+        return ArtworkExplanation(explanation_xml=interpretation, cache_id=cache_name)
 
     async def expand_subject(
         self,
@@ -110,7 +111,7 @@ class OpenAIService:
         Expand on a subject/term using text-only context (OpenAI doesn't support explicit cache reuse).
         """
         logger.info(f"OpenAI: Expanding subject '{subject}' with text-only context")
-        
+
         try:
             # Create a fake conversation where the AI already provided the original analysis
             response = self.client.chat.completions.create(
@@ -119,18 +120,23 @@ class OpenAIService:
                     {"role": "system", "content": ART_EXPLANATION_PROMPT},
                     {"role": "user", "content": "Please analyze this artwork."},
                     {"role": "assistant", "content": original_artwork_explanation},
-                    {"role": "user", "content": WIKILINK_EXPANSION_USER_MESSAGE.format(subject=subject)},
+                    {
+                        "role": "user",
+                        "content": WIKILINK_EXPANSION_USER_MESSAGE.format(
+                            subject=subject
+                        ),
+                    },
                 ],
                 temperature=0.7,
                 max_tokens=4096,
             )
             logger.info("Received explanation response from OpenAI API")
-            
+
             raw_content = response.choices[0].message.content
             cleaned_xml = clean_xml_response(raw_content)
             logger.info("XML explanation cleaned and validated")
             return cleaned_xml
-            
+
         except Exception as e:
             logger.error(f"Error explaining term with OpenAI: {str(e)}", exc_info=True)
             raise
