@@ -17,7 +17,7 @@ class ArtworkRepositoryImpl(ArtworkRepository):
     and raw database connections for better compatibility.
     """
 
-    def __init__(self, driver_adapter, connection_manager):
+    def __init__(self, driver_adapter, connection):
         """
         Initialize repository with a connection manager.
 
@@ -26,9 +26,46 @@ class ArtworkRepositoryImpl(ArtworkRepository):
             connection_manager: Connection manager for acquiring database connections
         """
         self.driver_adapter = driver_adapter
-        self.connection_manager = connection_manager
+        self.connection = connection
         self.queries = aiosql.from_path(
             "repositories/queries/artwork_queries.sql", driver_adapter=driver_adapter
+        )
+
+    async def get_cached_subject_expansion(
+        self, artwork_id: str, subject: str, parent_expansion_id: Optional[str] = None
+    ) -> Optional[SubjectExpansionRecord]:
+        """
+        Retrieve a cached subject expansion by artwork_id, subject, and parent_expansion_id.
+        PostgreSQL generates the hash internally for efficient lookup.
+
+        Args:
+            artwork_id: Reference to the original artwork
+            subject: The subject string to look up
+            parent_expansion_id: Optional parent expansion ID for context
+
+        Returns:
+            SubjectExpansionRecord if found in cache, None otherwise
+        """
+        # Execute the query - PostgreSQL handles the hashing including parent_expansion_id
+        results = await self.queries.get_cached_subject_expansion(
+            self.connection, artwork_id=artwork_id, subject=subject, parent_expansion_id=parent_expansion_id
+        )
+
+        if not results or len(results) == 0:
+            return None
+
+        # Get the first (and should be only) result
+        result = results[0]
+
+        # Convert to domain model
+        return SubjectExpansionRecord(
+            expansion_id=result["expansion_id"],
+            artwork_id=result["artwork_id"],
+            subject=result["subject"],
+            subject_hash=result["subject_hash"],
+            expansion_xml=result["expansion_xml"],
+            parent_expansion_id=result["parent_expansion_id"],
+            created_at=result["created_at"],
         )
 
     async def save_artwork_explanation(
@@ -52,16 +89,21 @@ class ArtworkRepositoryImpl(ArtworkRepository):
         """
         now = datetime.utcnow()
 
-        async with self.connection_manager.get_connection() as connection:
-            # Execute the save query
-            await self.queries.save_artwork_explanation(
-                connection,
-                artwork_id=artwork_id,
-                explanation_xml=explanation_xml,
-                image_path=image_path,
-                creator_user_id=creator_user_id,
-                created_at=now,
+        if creator_user_id:
+            await self.queries.ensure_user_profile(
+                self.connection,
+                user_id=creator_user_id,
             )
+
+        # Execute the save query
+        await self.queries.save_artwork_explanation(
+            self.connection,
+            artwork_id=artwork_id,
+            explanation_xml=explanation_xml,
+            image_path=image_path,
+            creator_user_id=creator_user_id,
+            created_at=now,
+        )
 
         # Return the domain model
         return ArtworkRecord(
@@ -82,26 +124,26 @@ class ArtworkRepositoryImpl(ArtworkRepository):
         Returns:
             ArtworkRecord if found, None otherwise
         """
-        async with self.connection_manager.get_connection() as connection:
-            # Execute the query
-            results = await self.queries.get_artwork_explanation(
-                connection, artwork_id=artwork_id
-            )
+        # Execute the query
+        results = await self.queries.get_artwork_explanation(
+            self.connection,
+            artwork_id=artwork_id
+        )
 
-            if not results or len(results) == 0:
-                return None
+        if not results or len(results) == 0:
+            return None
 
-            # Get the first (and should be only) result
-            result = results[0]
+        # Get the first (and should be only) result
+        result = results[0]
 
-            # Convert to domain model
-            return ArtworkRecord(
-                artwork_id=result["artwork_id"],
-                explanation_xml=result["explanation_xml"],
-                image_path=result["image_path"],
-                creator_user_id=result["creator_user_id"],
-                created_at=result["created_at"],
-            )
+        # Convert to domain model
+        return ArtworkRecord(
+            artwork_id=result["artwork_id"],
+            explanation_xml=result["explanation_xml"],
+            image_path=result["image_path"],
+            creator_user_id=result["creator_user_id"],
+            created_at=result["created_at"],
+        )
 
     async def save_subject_expansion(
         self,
@@ -125,20 +167,9 @@ class ArtworkRepositoryImpl(ArtworkRepository):
         now = datetime.utcnow()
         expansion_id = str(uuid.uuid4())
 
-        async with self.connection_manager.get_connection() as connection:
-            # Execute the save query
-            await self.queries.save_subject_expansion(
-                connection,
-                expansion_id=expansion_id,
-                artwork_id=artwork_id,
-                subject=subject,
-                expansion_xml=expansion_xml,
-                parent_expansion_id=parent_expansion_id,
-                created_at=now,
-            )
-
-        # Return the domain model
-        return SubjectExpansionRecord(
+        # Execute the save query - PostgreSQL generates the subject_hash
+        await self.queries.save_subject_expansion(
+            self.connection,
             expansion_id=expansion_id,
             artwork_id=artwork_id,
             subject=subject,
@@ -146,6 +177,13 @@ class ArtworkRepositoryImpl(ArtworkRepository):
             parent_expansion_id=parent_expansion_id,
             created_at=now,
         )
+
+        # Retrieve the saved record to get the PostgreSQL-generated subject_hash
+        saved_record = await self.get_subject_expansion(expansion_id)
+        if saved_record is None:
+            raise RuntimeError(f"Failed to retrieve saved expansion: {expansion_id}")
+
+        return saved_record
 
     async def get_subject_expansion(
         self, expansion_id: str
@@ -159,27 +197,27 @@ class ArtworkRepositoryImpl(ArtworkRepository):
         Returns:
             SubjectExpansionRecord if found, None otherwise
         """
-        async with self.connection_manager.get_connection() as connection:
-            # Execute the query
-            results = await self.queries.get_subject_expansion(
-                connection, expansion_id=expansion_id
-            )
+        # Execute the query
+        results = await self.queries.get_subject_expansion(
+            self.connection, expansion_id=expansion_id
+        )
 
-            if not results or len(results) == 0:
-                return None
+        if not results or len(results) == 0:
+            return None
 
-            # Get the first (and should be only) result
-            result = results[0]
+        # Get the first (and should be only) result
+        result = results[0]
 
-            # Convert to domain model
-            return SubjectExpansionRecord(
-                expansion_id=result["expansion_id"],
-                artwork_id=result["artwork_id"],
-                subject=result["subject"],
-                expansion_xml=result["expansion_xml"],
-                parent_expansion_id=result["parent_expansion_id"],
-                created_at=result["created_at"],
-            )
+        # Convert to domain model
+        return SubjectExpansionRecord(
+            expansion_id=result["expansion_id"],
+            artwork_id=result["artwork_id"],
+            subject=result["subject"],
+            subject_hash=result["subject_hash"],
+            expansion_xml=result["expansion_xml"],
+            parent_expansion_id=result["parent_expansion_id"],
+            created_at=result["created_at"],
+        )
 
     async def get_subject_expansions(
         self, artwork_id: str
@@ -193,24 +231,24 @@ class ArtworkRepositoryImpl(ArtworkRepository):
         Returns:
             List of SubjectExpansionRecord, empty list if none found
         """
-        async with self.connection_manager.get_connection() as connection:
-            # Execute the query
-            results = await self.queries.get_subject_expansions(
-                connection, artwork_id=artwork_id
-            )
+        # Execute the query
+        results = await self.queries.get_subject_expansions(
+            self.connection, artwork_id=artwork_id
+        )
 
-            # Convert to domain models
-            return [
-                SubjectExpansionRecord(
-                    expansion_id=row["expansion_id"],
-                    artwork_id=row["artwork_id"],
-                    subject=row["subject"],
-                    expansion_xml=row["expansion_xml"],
-                    parent_expansion_id=row["parent_expansion_id"],
-                    created_at=row["created_at"],
-                )
-                for row in results
-            ]
+        # Convert to domain models
+        return [
+            SubjectExpansionRecord(
+                expansion_id=row["expansion_id"],
+                artwork_id=row["artwork_id"],
+                subject=row["subject"],
+                subject_hash=row["subject_hash"],
+                expansion_xml=row["expansion_xml"],
+                parent_expansion_id=row["parent_expansion_id"],
+                created_at=row["created_at"],
+            )
+            for row in results
+        ]
 
     async def save_user_artwork(self, user_id: str, artwork_id: str) -> None:
         """
@@ -222,14 +260,13 @@ class ArtworkRepositoryImpl(ArtworkRepository):
         """
         now = datetime.utcnow()
 
-        async with self.connection_manager.get_connection() as connection:
-            # Execute the save query
-            await self.queries.save_user_artwork(
-                connection,
-                user_id=user_id,
-                artwork_id=artwork_id,
-                saved_at=now,
-            )
+        # Execute the save query
+        await self.queries.save_user_artwork(
+            self.connection,
+            user_id=user_id,
+            artwork_id=artwork_id,
+            saved_at=now,
+        )
 
     async def get_user_saved_artworks(self, user_id: str) -> list[ArtworkRecord]:
         """
@@ -241,20 +278,19 @@ class ArtworkRepositoryImpl(ArtworkRepository):
         Returns:
             List of ArtworkRecord with metadata, empty list if none found
         """
-        async with self.connection_manager.get_connection() as connection:
-            # Execute the query
-            results = await self.queries.get_user_saved_artworks(
-                connection, user_id=user_id
-            )
+        # Execute the query
+        results = await self.queries.get_user_saved_artworks(
+            self.connection, user_id=user_id
+        )
 
-            # Convert to domain models (without XML for performance)
-            return [
-                ArtworkRecord(
-                    artwork_id=row["artwork_id"],
-                    explanation_xml="",  # Not included in user artworks list
-                    image_path=row["image_path"],
-                    creator_user_id=row["creator_user_id"],
-                    created_at=row["saved_at"],  # Use saved_at for user's perspective
-                )
-                for row in results
-            ]
+        # Convert to domain models (without XML for performance)
+        return [
+            ArtworkRecord(
+                artwork_id=row["artwork_id"],
+                explanation_xml="",  # Not included in user artworks list
+                image_path=row["image_path"],
+                creator_user_id=row["creator_user_id"],
+                created_at=row["saved_at"],  # Use saved_at for user's perspective
+            )
+            for row in results
+        ]

@@ -9,6 +9,7 @@ import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime
 import os
+from typing import Optional
 
 
 def xml_to_html(xml_content: str, image_path: str) -> str:
@@ -629,19 +630,44 @@ def xml_to_html(xml_content: str, image_path: str) -> str:
     return html
 
 
-def test_interpret_art(image_path: str, api_url: str = "http://localhost:8000"):
-    """Test the art interpretation endpoint"""
+def load_token_from_file() -> Optional[str]:
+    """Load JWT token from file if it exists"""
+    token_file = "supabase_token.txt"
+    if os.path.exists(token_file):
+        try:
+            with open(token_file, "r") as f:
+                token = f.read().strip()
+                if token:
+                    print(f"📁 Loaded token from {token_file}")
+                    return token
+        except Exception as e:
+            print(f"⚠️  Could not read token file: {e}")
+    return None
+
+
+def test_interpret_art(image_path: str, api_url: str = "http://localhost:8000", jwt_token: Optional[str] = None):
+    """Test the art interpretation endpoint with optional JWT authentication"""
 
     endpoint = f"{api_url}/api/ai/artwork/explain"
 
     print(f"Testing art interpretation API...")
     print(f"Image: {image_path}")
-    print(f"Endpoint: {endpoint}\n")
+    print(f"Endpoint: {endpoint}")
+    
+    # Prepare headers
+    headers = {}
+    if jwt_token:
+        headers["Authorization"] = f"Bearer {jwt_token}"
+        print(f"🔐 Using JWT authentication")
+        print(f"🎫 Token: {jwt_token[:50]}...")
+    else:
+        print(f"🔓 No authentication token provided")
+    print()
 
     try:
         with open(image_path, "rb") as image_file:
             files = {"data": image_file}
-            response = requests.post(endpoint, files=files)
+            response = requests.post(endpoint, files=files, headers=headers)
 
         if response.status_code == 200:
             xml_content = response.text
@@ -692,11 +718,63 @@ def test_interpret_art(image_path: str, api_url: str = "http://localhost:8000"):
 
 
 if __name__ == "__main__":
-    # Then test art interpretation if image path is provided
+    print("🎨 Art Backend - Art Interpretation Tester with JWT Auth")
+    print("=" * 60)
+    
+    # Parse command line arguments
     if len(sys.argv) < 2:
-        print("Usage: python test_api.py <path_to_image>")
+        print("Usage: python test_api.py <path_to_image> [jwt_token]")
+        print("       python test_api.py <path_to_image> [user_id]")
         print("Example: python test_api.py artwork.jpg")
+        print("         python test_api.py artwork.jpg eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...")
+        print("         python test_api.py artwork.jpg user123")
         sys.exit(1)
 
     image_path = sys.argv[1]
-    test_interpret_art(image_path)
+    jwt_token = None
+    
+    # Handle JWT token from command line arguments
+    if len(sys.argv) > 2:
+        # Check if second arg is a token (starts with eyJ)
+        if sys.argv[2].startswith("eyJ"):
+            jwt_token = sys.argv[2]
+            print(f"🎫 Using provided JWT token: {jwt_token[:50]}...")
+        else:
+            # Second arg is user ID - try to load token from file
+            user_id = sys.argv[2]
+            print(f"👤 Using provided user ID: {user_id}")
+            jwt_token = load_token_from_file()
+    else:
+        # Try to load token from file
+        jwt_token = load_token_from_file()
+    
+    # If no token found, ask user
+    if not jwt_token:
+        print(f"\n🔐 JWT Token Options:")
+        print(f"  1. Enter token manually")
+        print(f"  2. Run 'python get_supabase_token.py' first to generate one")
+        print(f"  3. Skip authentication (test without token)")
+
+        choice = input("\nChoose option (1/2/3): ").strip()
+
+        if choice == "1":
+            jwt_token = input("Enter JWT token: ").strip()
+            if not jwt_token:
+                print("❌ Token cannot be empty")
+                sys.exit(1)
+        elif choice == "2":
+            print("💡 Please run 'python get_supabase_token.py' first, then run this script again")
+            sys.exit(1)
+        elif choice == "3":
+            print("🔓 Testing without authentication")
+        else:
+            print("❌ Invalid choice")
+            sys.exit(1)
+
+    print()
+    
+    # Test art interpretation with JWT token
+    test_interpret_art(image_path, jwt_token=jwt_token)
+    
+    print(f"\n✅ Test completed!")
+    print(f"💡 Check your server logs to see the middleware authentication details")

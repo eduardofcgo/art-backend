@@ -8,8 +8,6 @@ from litestar.config.cors import CORSConfig
 from litestar.logging import LoggingConfig
 from litestar.status_codes import HTTP_200_OK
 from litestar.di import Provide
-from litestar.security.jwt import JWTAuth, Token
-from typing import Optional
 
 from controllers.artwork_controller import (
     explain_artwork,
@@ -27,6 +25,7 @@ from dependencies.repository_provider import (
     shutdown_database,
 )
 from dependencies.storage_provider import artwork_storage_provider
+from dependencies.url_resolver_provider import url_resolver_provider
 from config.settings import Settings
 
 # Configure logging with Litestar's LoggingConfig
@@ -46,13 +45,6 @@ logging_config = LoggingConfig(
 
 logger = logging.getLogger(__name__)
 
-
-def _retrieve_user(token: Token, connection) -> Optional[str]:
-    user_id = token.sub if token.sub else None
-
-    # The return value is automatically made available as request.user
-    return user_id
-
 # Create authentication middleware
 auth = create_auth(
     token_secret=Settings().SUPABASE_JWT_SECRET,
@@ -65,11 +57,13 @@ auth = create_auth(
 api_router = Router(
     path="/api",
     route_handlers=[get_artwork, get_artwork_image, get_expansion, get_user_artworks],
+    middleware=[auth.middleware],
     dependencies={
         "settings": Provide(get_settings, sync_to_thread=False),
         "repository": Provide(get_artwork_repository, sync_to_thread=False),
         "storage_service": artwork_storage_provider,
         "authenticated_user": authenticated_user_provider,
+        "url_resolver": url_resolver_provider,
     },
 )
 
@@ -126,6 +120,5 @@ app = Litestar(
     on_app_init=[auth.on_app_init],
     on_startup=[startup],
     on_shutdown=[shutdown],
-    middleware=[auth.middleware],
     debug=True,  # Enable debug mode for detailed error logging
 )

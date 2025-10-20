@@ -14,14 +14,14 @@ from litestar.middleware.base import DefineMiddleware, AbstractMiddleware
 from litestar.connection import ASGIConnection
 from litestar.security.jwt import JWTAuth, Token
 from litestar.exceptions import NotAuthorizedException
-from litestar.types import ASGIApp, Method, Receive, Scope, Scopes, Send 
+from litestar.types import ASGIApp, Method, Receive, Scope, Scopes, Send
 
 logger = logging.getLogger(__name__)
 
 
 def _retrieve_user(token: Token, connection) -> Optional[str]:
     """Extract user ID from JWT token. Returns None if no token or invalid token."""
-    
+
     user_id = token.sub if token.sub else None
 
     # The return value is automatically made available as request.user
@@ -32,6 +32,7 @@ class AuthMiddleware(JWTAuthenticationMiddleware):
     """
     Middleware that provides JWT authentication.
     """
+
     def __init__(self, **kwargs: Any):
         super().__init__(**kwargs)
 

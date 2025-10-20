@@ -17,6 +17,7 @@ from utils.image_processor import (
     processed_image_content_type,
     validate_and_process_image,
 )
+from utils.url_resolver import URLResolver
 from services.base import AIService
 from services.storage.artwork_image_storage import ArtworkImageStorage
 from models import ArtworkExplanation
@@ -25,8 +26,9 @@ from repositories.base import ArtworkRepository
 logger = logging.getLogger(__name__)
 
 
-@post("/artwork/explain")
+@post("/artwork/explain", name="explain_artwork")
 async def explain_artwork(
+    request: Request,
     data: UploadFile = Body(media_type=RequestEncodingType.MULTI_PART),
     ai_service: AIService = Dependency(),
     repository: ArtworkRepository = Dependency(),
@@ -92,7 +94,7 @@ async def explain_artwork(
     # Return redirect to the artwork endpoint
     logger.info(f"Successfully generated artwork explanation response")
     return Response(
-        content="", status_code=303, headers={"Location": f"/api/artwork/{artwork_id}"}
+        content="", status_code=303, headers={"Location": request.url_for("get_artwork", artwork_id=artwork_id)}
     )
 
 
@@ -105,10 +107,10 @@ class ExpandSubjectRequest:
     parent_expansion_id: Optional[str] = None
 
 
-@post("/artwork/expand")
+@post("/artwork/expand", name="expand_subject")
 async def expand_subject(
+    request: Request,
     data: ExpandSubjectRequest,
-    artwork_id: str,
     ai_service: AIService = Dependency(),
     repository: ArtworkRepository = Dependency(),
 ) -> Response:
@@ -117,60 +119,71 @@ async def expand_subject(
 
     This endpoint reuses the cached image context from the original artwork interpretation.
 
-    Path parameter:
-        artwork_id: The cache identifier returned from the initial artwork explanation
-
-    Request body:
+    Example request body:
     {
-        "subject": "Impressionism"
+        "artwork_id": "123e4567-e89b-12d3-a456-426614174000",
+        "subject": "Impressionism",
+        "parent_expansion_id": "123e4567-e89b-12d3-a456-426614174000"
     }
 
-    Returns: XML with the in-depth subject expansion
+    Returns: Redirect to the created expansion resource
     """
     logger.info(
         f"Received subject expansion request: subject={data.subject}, "
-        f"artwork_id={artwork_id}"
+        f"artwork_id={data.artwork_id}"
     )
 
     # Validate inputs
     if not data.subject or not data.subject.strip():
         raise ValueError("Subject cannot be empty")
 
-    if not artwork_id or not artwork_id.strip():
+    if not data.artwork_id or not data.artwork_id.strip():
         raise ValueError("Artwork ID cannot be empty")
 
-    # Retrieve original artwork explanation from database
-    artwork_record = await repository.get_artwork_explanation(artwork_id)
-    if artwork_record is None:
-        raise ValueError(f"Artwork not found: {artwork_id}")
-
-    # Get expansion from AI for the artwork_id and provided subject
-    expansion_xml = await ai_service.expand_subject(
-        artwork_id=artwork_id,
-        original_artwork_explanation=artwork_record.explanation_xml,
+    # Check if expansion already exists in cache
+    cached_expansion = await repository.get_cached_subject_expansion(
+        artwork_id=data.artwork_id,
         subject=data.subject,
-    )
-
-    # Save subject expansion to database
-    expansion_record = await repository.save_subject_expansion(
-        artwork_id=artwork_id,
-        subject=data.subject,
-        expansion_xml=expansion_xml,
         parent_expansion_id=data.parent_expansion_id,
     )
-    logger.info(f"Saved subject expansion to database: {data.subject}")
+    
+    if cached_expansion is not None:
+        logger.info(f"Found cached expansion for subject: {data.subject}")
+        expansion_record = cached_expansion
+    else:
+        # Retrieve original artwork explanation from database
+        artwork_record = await repository.get_artwork_explanation(data.artwork_id)
+        if artwork_record is None:
+            raise ValueError(f"Artwork not found: {data.artwork_id}")
+
+        # Get expansion from AI for the artwork_id and provided subject
+        expansion_xml = await ai_service.expand_subject(
+            artwork_id=data.artwork_id,
+            original_artwork_explanation=artwork_record.explanation_xml,
+            subject=data.subject,
+        )
+
+        # Save subject expansion to database
+        expansion_record = await repository.save_subject_expansion(
+            artwork_id=data.artwork_id,
+            subject=data.subject,
+            expansion_xml=expansion_xml,
+            parent_expansion_id=data.parent_expansion_id,
+        )
+        logger.info(f"Saved subject expansion to database: {data.subject}")
 
     # Return redirect to the expansion endpoint
     logger.info(f"Successfully generated subject expansion for: {data.subject}")
     return Response(
         content="",
         status_code=303,
-        headers={"Location": f"/api/expansion/{expansion_record.expansion_id}"},
+        headers={"Location": request.url_for("get_expansion", expansion_id=str(expansion_record.expansion_id))},
     )
 
 
-@get("/artwork/{artwork_id:str}")
+@get("/artwork/{artwork_id:str}", name="get_artwork")
 async def get_artwork(
+    request: Request,
     artwork_id: str,
     repository: ArtworkRepository = Dependency(),
     storage_service: ArtworkImageStorage = Dependency(),
@@ -197,11 +210,12 @@ async def get_artwork(
     # Generate image endpoint URL if available
     image_url = None
     if artwork_record.image_path:
-        image_url = f"/api/artwork/{artwork_record.artwork_id}/image"
+        image_url = await storage_service.get_image_url(artwork_record.image_path)
+        # image_url = request.url_for("get_artwork_image", artwork_id=str(artwork_record.artwork_id))
 
     # Return JSON response with both XML and image URL
     response_data = {
-        "artwork_id": artwork_record.artwork_id,
+        "id": artwork_record.artwork_id,
         "explanation_xml": artwork_record.explanation_xml,
         "image_url": image_url,
         "created_at": artwork_record.created_at.isoformat(),
@@ -215,7 +229,7 @@ async def get_artwork(
     )
 
 
-@get("/artwork/{artwork_id:str}/image")
+@get("/artwork/{artwork_id:str}/image", name="get_artwork_image")
 async def get_artwork_image(
     artwork_id: str,
     size: Optional[str] = None,
@@ -269,7 +283,7 @@ async def get_artwork_image(
     return Response(content="", status_code=302, headers={"Location": image_url})
 
 
-@get("/expansion/{expansion_id:str}")
+@get("/expansion/{expansion_id:str}", name="get_expansion")
 async def get_expansion(
     expansion_id: str,
     repository: ArtworkRepository = Dependency(),
@@ -280,7 +294,7 @@ async def get_expansion(
     Path parameter:
         expansion_id: The unique identifier for the expansion
 
-    Returns: XML with the subject expansion or 404 if not found
+    Returns: JSON object with expansion data or 404 if not found
     """
     logger.info(f"Received expansion retrieval request: expansion_id={expansion_id}")
 
@@ -293,20 +307,32 @@ async def get_expansion(
             status_code=HTTP_404_NOT_FOUND,
         )
 
-    # Return XML response
+    # Return JSON response with expansion data
+    response_data = {
+        "id": expansion_record.expansion_id,
+        "expansion_xml": expansion_record.expansion_xml,
+        "subject": expansion_record.subject,
+        "artwork_id": expansion_record.artwork_id,
+        "parent_expansion_id": expansion_record.parent_expansion_id,
+        "created_at": expansion_record.created_at.isoformat(),
+    }
+
     logger.info(f"Successfully retrieved subject expansion: {expansion_id}")
     return Response(
-        content=expansion_record.expansion_xml,
-        media_type="application/xml",
+        content=response_data,
+        media_type="application/json",
         status_code=HTTP_200_OK,
     )
 
 
-@get("/user/{user_id:str}/artworks")
+@get("/user/{user_id:str}/artworks", name="get_user_artworks")
 async def get_user_artworks(
+    request: Request,
     user_id: str,
     repository: ArtworkRepository = Dependency(),
     authenticated_user: Optional[AuthenticatedUser] = Dependency(),
+    url_resolver: URLResolver = Dependency(),
+    storage_service: ArtworkImageStorage = Dependency(),
 ) -> Response:
     """
     Endpoint to retrieve all artworks saved by a user.
@@ -327,7 +353,12 @@ async def get_user_artworks(
         # Generate image endpoint URL if image is available
         image_url = None
         if artwork.image_path:
-            image_url = f"/api/artwork/{artwork.artwork_id}/image?size=sm"
+            image_url = await storage_service.get_image_url(artwork.image_path)
+            # image_url = url_resolver.resolve_url(
+            #     route_name="get_artwork_image",
+            #     path_params={"artwork_id": str(artwork.artwork_id)},
+            #     query_params={"size": "sm"}
+            # )
 
         artworks_data.append(
             {

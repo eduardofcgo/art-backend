@@ -43,11 +43,17 @@ class Settings:
         self.DATABASE_DRIVER_ADAPTER: str = os.getenv(
             "DATABASE_DRIVER_ADAPTER", "aiosqlite"  # Async SQLite driver
         )
-        
+
         # PostgreSQL Connection Pool Configuration
-        self.POSTGRES_MIN_CONNECTIONS: int = int(os.getenv("POSTGRES_MIN_CONNECTIONS", "1"))
-        self.POSTGRES_MAX_CONNECTIONS: int = int(os.getenv("POSTGRES_MAX_CONNECTIONS", "10"))
-        self.POSTGRES_COMMAND_TIMEOUT: int = int(os.getenv("POSTGRES_COMMAND_TIMEOUT", "60"))
+        self.POSTGRES_MIN_CONNECTIONS: int = int(
+            os.getenv("POSTGRES_MIN_CONNECTIONS", "1")
+        )
+        self.POSTGRES_MAX_CONNECTIONS: int = int(
+            os.getenv("POSTGRES_MAX_CONNECTIONS", "10")
+        )
+        self.POSTGRES_COMMAND_TIMEOUT: int = int(
+            os.getenv("POSTGRES_COMMAND_TIMEOUT", "60")
+        )
 
         # Supabase Storage Configuration
         self.SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
@@ -57,6 +63,9 @@ class Settings:
         self.SIGNED_URL_EXPIRY: int = int(
             os.getenv("SIGNED_URL_EXPIRY", "3600")
         )  # 1 hour default
+
+        # API Configuration
+        self.BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8000")
 
         # Validate on initialization
         self.validate()

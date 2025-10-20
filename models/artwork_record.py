@@ -36,6 +36,7 @@ class SubjectExpansionRecord:
         expansion_id: Unique identifier for this expansion
         artwork_id: Reference to the original artwork
         subject: The subject that was expanded on
+        subject_hash: SHA-256 hash of the subject for efficient caching
         expansion_xml: The XML expansion of the subject
         parent_expansion_id: Reference to parent expansion (None for root expansions)
         created_at: Timestamp when the record was created
@@ -44,6 +45,7 @@ class SubjectExpansionRecord:
     expansion_id: str
     artwork_id: str
     subject: str
+    subject_hash: str
     expansion_xml: str
     parent_expansion_id: Optional[str]
     created_at: datetime

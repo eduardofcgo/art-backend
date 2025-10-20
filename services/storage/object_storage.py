@@ -77,17 +77,18 @@ class ObjectStorageService(StorageService):
 
         try:
             # Prepare transform options if width or height are provided
-            transform_options = {}
+            options = {}
             if width is not None or height is not None:
-                transform_options["transform"] = {}
+                transform_options = {}
                 if width is not None:
-                    transform_options["transform"]["width"] = width
+                    transform_options["width"] = width
                 if height is not None:
-                    transform_options["transform"]["height"] = height
+                    transform_options["height"] = height
+                options["transform"] = transform_options
 
             # Generate signed URL
             result = self.client.storage.from_(self.bucket).create_signed_url(
-                path=path, expires_in=expires_in, **transform_options
+                path, expires_in, options
             )
 
             # Check if signed URL generation was successful
