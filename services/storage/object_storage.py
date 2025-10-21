@@ -116,6 +116,46 @@ class ObjectStorageService(StorageService):
             logger.error(f"Error generating signed URL: {e}")
             raise
 
+    async def get_public_url(
+        self,
+        path: str,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ) -> str:
+        """
+        Get a public URL for accessing the object.
+
+        Args:
+            path: Path to the object in storage
+            width: Optional width for image transformation
+            height: Optional height for image transformation
+
+        Returns:
+            Public URL for accessing the object
+        """
+        try:
+            # Get the public URL from Supabase storage
+            public_url = self.client.storage.from_(self.bucket).get_public_url(path)
+            
+            # Add transformation parameters if width or height are provided
+            if width is not None or height is not None:
+                transform_params = []
+                if width is not None:
+                    transform_params.append(f"width={width}")
+                if height is not None:
+                    transform_params.append(f"height={height}")
+                
+                if transform_params:
+                    separator = "&" if "?" in public_url else "?"
+                    public_url += f"{separator}{'&'.join(transform_params)}"
+
+            logger.info(f"Generated public URL for object: {path}")
+            return public_url
+
+        except Exception as e:
+            logger.error(f"Error generating public URL: {e}")
+            raise
+
     async def delete(self, path: str) -> None:
         """
         Delete an object from storage.

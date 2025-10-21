@@ -134,3 +134,20 @@ class ArtworkRepository(Protocol):
             Exception: If retrieval operation fails
         """
         ...
+
+    async def get_all_expansions_with_hierarchy(
+        self, artwork_id: str
+    ) -> list[SubjectExpansionRecord]:
+        """
+        Retrieve all subject expansions for a given artwork using recursive CTE.
+
+        Args:
+            artwork_id: Reference to the original artwork
+
+        Returns:
+            List of SubjectExpansionRecord with all expansions in hierarchy order
+
+        Raises:
+            Exception: If retrieval operation fails
+        """
+        ...

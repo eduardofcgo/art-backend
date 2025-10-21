@@ -52,32 +52,31 @@ class ArtworkImageStorage:
     async def get_image_url(
         self,
         image_path: str,
-        expires_in: Optional[int] = None,
         width: Optional[int] = None,
         height: Optional[int] = None,
     ) -> str:
         """
-        Generate a signed URL for accessing the artwork image.
+        Generate a public URL for accessing the artwork image.
 
         Args:
             image_path: Path to the image in storage
-            expires_in: URL expiration time in seconds (uses default if None)
+            expires_in: URL expiration time in seconds (ignored for public URLs)
             width: Optional width for image transformation
             height: Optional height for image transformation
 
         Returns:
-            Signed URL for accessing the image
+            Public URL for accessing the image
         """
         try:
-            # Generate signed URL using generic storage service
-            signed_url = await self.storage.generate_signed_url(
-                image_path, expires_in, width, height
+            # Generate public URL using generic storage service
+            public_url = await self.storage.get_public_url(
+                image_path, width, height
             )
-            logger.info(f"Generated signed URL for artwork image: {image_path}")
-            return signed_url
+            logger.info(f"Generated public URL for artwork image: {image_path}")
+            return public_url
 
         except Exception as e:
-            logger.error(f"Error generating signed URL for artwork image: {e}")
+            logger.error(f"Error generating public URL for artwork image: {e}")
             raise
 
     async def delete_artwork_image(self, image_path: str) -> None:

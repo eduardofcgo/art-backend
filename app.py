@@ -16,6 +16,7 @@ from controllers.artwork_controller import (
     get_artwork_image,
     get_expansion,
     get_user_artworks,
+    get_artwork_expansions,
 )
 from middleware.auth import create_auth
 from dependencies import get_ai_service, get_settings, authenticated_user_provider
@@ -56,7 +57,7 @@ auth = create_auth(
 # All API routes automatically get repository, settings, storage_service, and authenticated_user injected
 api_router = Router(
     path="/api",
-    route_handlers=[get_artwork, get_artwork_image, get_expansion, get_user_artworks],
+    route_handlers=[get_artwork, get_artwork_image, get_expansion, get_user_artworks, get_artwork_expansions],
     middleware=[auth.middleware],
     dependencies={
         "settings": Provide(get_settings, sync_to_thread=False),

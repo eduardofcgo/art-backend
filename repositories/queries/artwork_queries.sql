@@ -57,3 +57,22 @@ from artwork_explanations
 -- JOIN artwork_explanations ae ON usa.artwork_id = ae.artwork_id
 -- WHERE usa.user_id = :user_id::uuid
 -- ORDER BY usa.saved_at DESC;
+
+-- name: get_all_expansions_with_hierarchy
+-- Retrieve all subject expansions for a given artwork using recursive CTE
+WITH RECURSIVE expansion_tree AS (
+    -- Base case: get all root expansions (parent_expansion_id IS NULL)
+    SELECT expansion_id, artwork_id, subject, subject_hash, expansion_xml, parent_expansion_id, created_at, 0 as level
+    FROM subject_expansions
+    WHERE artwork_id = :artwork_id::uuid AND parent_expansion_id IS NULL
+    
+    UNION ALL
+    
+    -- Recursive case: get all child expansions
+    SELECT se.expansion_id, se.artwork_id, se.subject, se.subject_hash, se.expansion_xml, se.parent_expansion_id, se.created_at, et.level + 1
+    FROM subject_expansions se
+    INNER JOIN expansion_tree et ON se.parent_expansion_id = et.expansion_id
+)
+SELECT expansion_id, artwork_id, subject, subject_hash, expansion_xml, parent_expansion_id, created_at
+FROM expansion_tree
+ORDER BY level, created_at;

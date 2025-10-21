@@ -59,7 +59,7 @@ class Settings:
         self.SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
         self.SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
         self.SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
-        self.SUPABASE_BUCKET: str = os.getenv("SUPABASE_BUCKET", "explain_artwork")
+        self.SUPABASE_BUCKET: str = os.getenv("SUPABASE_BUCKET", "")
         self.SIGNED_URL_EXPIRY: int = int(
             os.getenv("SIGNED_URL_EXPIRY", "3600")
         )  # 1 hour default

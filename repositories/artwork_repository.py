@@ -294,3 +294,34 @@ class ArtworkRepositoryImpl(ArtworkRepository):
             )
             for row in results
         ]
+
+    async def get_all_expansions_with_hierarchy(
+        self, artwork_id: str
+    ) -> list[SubjectExpansionRecord]:
+        """
+        Retrieve all subject expansions for a given artwork using recursive CTE.
+
+        Args:
+            artwork_id: Reference to the original artwork
+
+        Returns:
+            List of SubjectExpansionRecord with all expansions in hierarchy order
+        """
+        # Execute the recursive query
+        results = await self.queries.get_all_expansions_with_hierarchy(
+            self.connection, artwork_id=artwork_id
+        )
+
+        # Convert to domain models
+        return [
+            SubjectExpansionRecord(
+                expansion_id=row["expansion_id"],
+                artwork_id=row["artwork_id"],
+                subject=row["subject"],
+                subject_hash=row["subject_hash"],
+                expansion_xml=row["expansion_xml"],
+                parent_expansion_id=row["parent_expansion_id"],
+                created_at=row["created_at"],
+            )
+            for row in results
+        ]

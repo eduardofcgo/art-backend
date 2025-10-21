@@ -237,7 +237,7 @@ async def get_artwork_image(
     storage_service: ArtworkImageStorage = Dependency(),
 ) -> Response:
     """
-    Endpoint to get the artwork image by redirecting to the signed URL.
+    Endpoint to get the artwork image by redirecting to the public URL.
 
     Path parameter:
         artwork_id: The unique identifier for the artwork
@@ -245,7 +245,7 @@ async def get_artwork_image(
     Query parameter:
         size: Optional size parameter (currently supports "sm" for 200x200)
 
-    Returns: Redirect to the signed URL of the image or 404 if not found
+    Returns: Redirect to the public URL of the image or 404 if not found
     """
     logger.info(f"Received artwork image request: artwork_id={artwork_id}, size={size}")
 
@@ -273,13 +273,13 @@ async def get_artwork_image(
         width = 200
         height = 200
 
-    # Generate signed URL for image with optional transformation
+    # Generate public URL for image with optional transformation
     image_url = await storage_service.get_image_url(
         artwork_record.image_path, width=width, height=height
     )
-    logger.info(f"Generated signed URL for image: {artwork_record.image_path}")
+    logger.info(f"Generated public URL for image: {artwork_record.image_path}")
 
-    # Return redirect to the signed URL
+    # Return redirect to the public URL
     return Response(content="", status_code=302, headers={"Location": image_url})
 
 
@@ -386,6 +386,59 @@ async def get_user_artworks(
     )
     return Response(
         content=artworks_data,
+        media_type="application/json",
+        status_code=HTTP_200_OK,
+    )
+
+
+@get("/artwork/{artwork_id:str}/expansions", name="get_artwork_expansions")
+async def get_artwork_expansions(
+    artwork_id: str,
+    repository: ArtworkRepository = Dependency(),
+) -> Response:
+    """
+    Endpoint to retrieve all expansions for an artwork in a hierarchical tree structure.
+
+    Path parameter:
+        artwork_id: The unique identifier for the artwork
+
+    Returns: JSON array with hierarchical expansion tree or 404 if artwork not found
+    """
+    logger.info(f"Received artwork expansions request: artwork_id={artwork_id}")
+
+    # Retrieve all expansions for the artwork using recursive query
+    all_expansions = await repository.get_all_expansions_with_hierarchy(artwork_id)
+    
+    if not all_expansions:
+        logger.warning(f"No expansions found for artwork: {artwork_id}")
+        return Response(
+            content=[],
+            media_type="application/json",
+            status_code=HTTP_200_OK,
+        )
+
+    # Build hierarchical tree structure
+    def build_tree(expansions, parent_id=None):
+        """Build tree structure from flat list of expansions."""
+        children = []
+        for expansion in expansions:
+            if expansion.parent_expansion_id == parent_id:
+                child = {
+                    "id": expansion.expansion_id,
+                    "subject": expansion.subject,
+                    "created_at": expansion.created_at.isoformat(),
+                    "sub_expansions": build_tree(expansions, expansion.expansion_id)
+                }
+                children.append(child)
+        
+        return children
+
+    # Build the tree starting from root expansions (parent_expansion_id = None)
+    tree = build_tree(all_expansions, None)
+
+    logger.info(f"Successfully built expansion tree with {len(tree)} root expansions for artwork: {artwork_id}")
+    return Response(
+        content=tree,
         media_type="application/json",
         status_code=HTTP_200_OK,
     )

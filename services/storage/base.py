@@ -47,6 +47,26 @@ class StorageService(ABC):
         pass
 
     @abstractmethod
+    async def get_public_url(
+        self,
+        path: str,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+    ) -> str:
+        """
+        Get a public URL for accessing the object.
+
+        Args:
+            path: Path to the object in storage
+            width: Optional width for image transformation
+            height: Optional height for image transformation
+
+        Returns:
+            Public URL for accessing the object
+        """
+        pass
+
+    @abstractmethod
     async def delete(self, path: str) -> None:
         """
         Delete an object from storage.
