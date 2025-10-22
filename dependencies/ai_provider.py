@@ -4,6 +4,7 @@ Dependency injection for AI provider services.
 
 from config.settings import Settings, AIProvider
 from services.gemini_service import GeminiService
+from services.openai_service import OpenAIService
 from services.base import AIService
 
 
@@ -36,5 +37,7 @@ def get_ai_service(settings: Settings) -> AIService:
     """
     if settings.AI_PROVIDER == AIProvider.GEMINI:
         return GeminiService(api_key=settings.GOOGLE_API_KEY)
+    elif settings.AI_PROVIDER == AIProvider.OPENAI:
+        return OpenAIService(api_key=settings.OPENAI_API_KEY)
     else:
-        raise ValueError(f"Invalid AI provider: {settings.AI_PROVIDER}. Only Gemini is supported.")
+        raise ValueError(f"Invalid AI provider: {settings.AI_PROVIDER}. Supported providers: gemini, openai")

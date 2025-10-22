@@ -8,13 +8,10 @@ without the header to pass through without authentication.
 
 import logging
 from typing import Optional, Any
-from litestar import Request
 from litestar.security.jwt import JWTAuthenticationMiddleware
-from litestar.middleware.base import DefineMiddleware, AbstractMiddleware
 from litestar.connection import ASGIConnection
 from litestar.security.jwt import JWTAuth, Token
-from litestar.exceptions import NotAuthorizedException
-from litestar.types import ASGIApp, Method, Receive, Scope, Scopes, Send
+from litestar.types import Scope, Send
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +27,7 @@ def _retrieve_user(token: Token, connection) -> Optional[str]:
 
 class AuthMiddleware(JWTAuthenticationMiddleware):
     """
-    Middleware that provides JWT authentication.
+    Middleware that provides optional JWT authentication.
     """
 
     def __init__(self, **kwargs: Any):
