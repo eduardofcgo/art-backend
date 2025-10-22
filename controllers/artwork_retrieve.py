@@ -31,7 +31,7 @@ async def get_artwork(
     logger.info(f"Received artwork retrieval request: artwork_id={artwork_id}")
 
     # Retrieve artwork explanation from database
-    artwork_record = await repository.get_artwork_explanation(artwork_id)
+    artwork_record = dict(await repository.get_artwork_explanation(artwork_id))
     if artwork_record is None:
         logger.warning(f"Artwork not found: {artwork_id}")
         return Response(

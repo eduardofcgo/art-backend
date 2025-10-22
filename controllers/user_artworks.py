@@ -33,7 +33,7 @@ async def get_user_artworks(
     logger.info(f"Received user artworks request: user_id={user_id}")
 
     # Retrieve user's saved artworks from database
-    saved_artworks = await repository.get_user_saved_artworks(user_id)
+    saved_artworks = dict(await repository.get_user_saved_artworks(user_id))
 
     for artwork in saved_artworks:
         if image_path := artwork.get("image_path"):
