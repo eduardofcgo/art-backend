@@ -3,9 +3,7 @@ Dependency injection for AI provider services.
 """
 
 from config.settings import Settings, AIProvider
-from services.openai_service import OpenAIService
 from services.gemini_service import GeminiService
-from services.anthropic_service import AnthropicService
 from services.base import AIService
 
 
@@ -31,16 +29,12 @@ def get_ai_service(settings: Settings) -> AIService:
         settings: Application settings (injected dependency)
 
     Returns:
-        Any service implementing the AIService protocol (structural typing)
+        GeminiService instance implementing the AIService protocol
 
     Raises:
         ValueError: If an invalid provider is configured
     """
-    if settings.AI_PROVIDER == AIProvider.OPENAI:
-        return OpenAIService(api_key=settings.OPENAI_API_KEY)
-    elif settings.AI_PROVIDER == AIProvider.GEMINI:
+    if settings.AI_PROVIDER == AIProvider.GEMINI:
         return GeminiService(api_key=settings.GOOGLE_API_KEY)
-    elif settings.AI_PROVIDER == AIProvider.ANTHROPIC:
-        return AnthropicService(api_key=settings.ANTHROPIC_API_KEY)
     else:
-        raise ValueError(f"Invalid AI provider: {settings.AI_PROVIDER}")
+        raise ValueError(f"Invalid AI provider: {settings.AI_PROVIDER}. Only Gemini is supported.")

@@ -156,9 +156,7 @@ art-backend/
 ├── dependencies/
 │   └── ai_provider.py         # Dependency injection for AI services
 ├── services/
-│   ├── openai_service.py      # OpenAI integration
-│   ├── gemini_service.py      # Google Gemini integration
-│   └── anthropic_service.py   # Anthropic Claude integration
+│   └── gemini_service.py      # Google Gemini integration
 ├── middleware/
 │   └── error_handler.py       # Error handling
 ├── utils/

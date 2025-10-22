@@ -39,7 +39,7 @@ async def validate_and_process_image(image_data: bytes, max_size: int = 1000) ->
             logger.info(f"Converting image from {img.mode} to RGB")
             img = img.convert("RGB")
 
-        # Resize if image is too large (OpenAI has size limits)
+        # Resize if image is too large (AI providers have size limits)
         if max(img.size) > max_size:
             original_size = img.size
             ratio = max_size / max(img.size)

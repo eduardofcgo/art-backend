@@ -27,6 +27,22 @@ class AIService(Protocol):
         """
         ...
 
+    async def explain_artwork_by_name(self, artwork_name: str, cache_name: str) -> str:
+        """
+        Send artwork name to AI API for art interpretation.
+
+        Args:
+            artwork_name: Name of the artwork to analyze
+            cache_name: Unique identifier for this cache
+
+        Returns:
+            Clean XML interpretation (guaranteed to be properly formatted)
+
+        Raises:
+            Exception: If AI API call fails
+        """
+        ...
+
     async def expand_subject(
         self,
         artwork_id: str,

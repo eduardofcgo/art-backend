@@ -9,12 +9,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Set your AI provider (openai, gemini, or anthropic)
+      # Set your AI provider (gemini only)
       - AI_PROVIDER=${AI_PROVIDER:-gemini}
       # API Keys - set these in your .env file or pass them here
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     env_file:
       - .env
     volumes:

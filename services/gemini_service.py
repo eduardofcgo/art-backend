@@ -10,7 +10,6 @@ from google import genai
 from google.genai import types
 from config.prompts import ART_EXPLANATION_PROMPT, WIKILINK_EXPANSION_USER_MESSAGE
 from utils.response_cleaner import clean_xml_response
-from models import ArtworkExplanation
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +105,54 @@ class GeminiService:
 
         except Exception as e:
             logger.error(f"Error in Gemini API call: {str(e)}", exc_info=True)
+            raise
+
+    async def explain_artwork_by_name(self, artwork_name: str, cache_name: str) -> str:
+        """
+        Send artwork name to Gemini API for art interpretation.
+
+        Args:
+            artwork_name: Name of the artwork to analyze
+            cache_name: Unique identifier for this cache
+
+        Returns:
+            Clean XML interpretation (guaranteed to be properly formatted)
+
+        Raises:
+            Exception: If Gemini API call fails
+        """
+        logger.info(f"Starting Gemini API request for artwork interpretation by name: {artwork_name}")
+
+        try:
+            # Call Gemini API with artwork name
+            logger.info("Sending request to Gemini API...")
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_text(
+                                text=f"Please analyze the artwork '{artwork_name}' according to your instructions."
+                            )
+                        ],
+                    ),
+                ],
+                config=self.generation_config,
+            )
+            logger.info("Received response from Gemini API")
+            logger.info(f"Usage: {response.usage_metadata}")
+
+            raw_content = response.text
+            logger.debug(f"Raw response length: {len(raw_content)} characters")
+
+            # Clean and return the XML response
+            cleaned_xml = clean_xml_response(raw_content)
+            logger.info("XML response cleaned and validated")
+            return cleaned_xml
+
+        except Exception as e:
+            logger.error(f"Error in Gemini API call for artwork by name: {str(e)}", exc_info=True)
             raise
 
     # For now we ignore the cache and rebuild the context/conversation

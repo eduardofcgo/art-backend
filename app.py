@@ -8,16 +8,26 @@ from litestar.config.cors import CORSConfig
 from litestar.logging import LoggingConfig
 from litestar.status_codes import HTTP_200_OK
 from litestar.di import Provide
+from serializer.asyncpg import serialize_asyncpg_record
+import asyncpg
 
-from controllers.artwork_controller import (
+from controllers.artwork_explain import (
     explain_artwork,
-    expand_subject,
+    explain_artwork_from_image,
+)
+from controllers.artwork_retrieve import (
     get_artwork,
     get_artwork_image,
+)
+from controllers.artwork_expand import (
+    expand_subject,
     get_expansion,
-    get_user_artworks,
     get_artwork_expansions,
 )
+from controllers.user_artworks import (
+    get_user_artworks,
+)
+from controllers.popular_artworks import get_popular_artworks
 from middleware.auth import create_auth
 from dependencies import get_ai_service, get_settings, authenticated_user_provider
 from dependencies.repository_provider import (
@@ -57,7 +67,7 @@ auth = create_auth(
 # All API routes automatically get repository, settings, storage_service, and authenticated_user injected
 api_router = Router(
     path="/api",
-    route_handlers=[get_artwork, get_artwork_image, get_expansion, get_user_artworks, get_artwork_expansions],
+    route_handlers=[get_artwork, get_artwork_image, get_expansion, get_user_artworks, get_artwork_expansions, get_popular_artworks],
     middleware=[auth.middleware],
     dependencies={
         "settings": Provide(get_settings, sync_to_thread=False),
@@ -72,7 +82,7 @@ api_router = Router(
 # All routes in this router automatically get ai_service injected (settings and authenticated_user inherited from parent)
 ai_router = Router(
     path="/ai",
-    route_handlers=[explain_artwork, expand_subject],
+    route_handlers=[explain_artwork, explain_artwork_from_image, expand_subject],
     dependencies={
         "ai_service": Provide(get_ai_service, sync_to_thread=False),
     },
@@ -121,5 +131,6 @@ app = Litestar(
     on_app_init=[auth.on_app_init],
     on_startup=[startup],
     on_shutdown=[shutdown],
+    type_encoders={asyncpg.Record: serialize_asyncpg_record},
     debug=True,  # Enable debug mode for detailed error logging
 )

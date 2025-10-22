@@ -2,8 +2,7 @@
 Base protocol for artwork repositories.
 """
 
-from typing import Protocol, Optional, runtime_checkable
-from models.artwork_record import ArtworkRecord, SubjectExpansionRecord
+from typing import Protocol, Optional, runtime_checkable, Dict, Any
 
 
 @runtime_checkable
@@ -16,25 +15,29 @@ class ArtworkRepository(Protocol):
         self,
         artwork_id: str,
         explanation_xml: str,
+        image_path: Optional[str] = None,
+        artwork_name: Optional[str] = None,
         creator_user_id: Optional[str] = None,
-    ) -> ArtworkRecord:
+    ) -> Dict[str, Any]:
         """
         Save an artwork explanation to the repository.
 
         Args:
             artwork_id: Unique identifier for the artwork
             explanation_xml: The XML interpretation of the artwork
+            image_path: Path to the image in storage (optional)
+            artwork_name: Name of the artwork (for name-based explanations, optional)
             creator_user_id: User who created/uploaded the artwork (optional for anonymous)
 
         Returns:
-            ArtworkRecord with the saved data including timestamp
+            Dict with the saved data including timestamp
 
         Raises:
             Exception: If save operation fails
         """
         ...
 
-    async def get_artwork_explanation(self, artwork_id: str) -> Optional[ArtworkRecord]:
+    async def get_artwork_explanation(self, artwork_id: str) -> Optional[Dict[str, Any]]:
         """
         Retrieve an artwork explanation from the repository.
 
@@ -42,7 +45,7 @@ class ArtworkRepository(Protocol):
             artwork_id: Unique identifier for the artwork
 
         Returns:
-            ArtworkRecord if found, None otherwise
+            Dict if found, None otherwise
 
         Raises:
             Exception: If retrieval operation fails
@@ -55,7 +58,7 @@ class ArtworkRepository(Protocol):
         subject: str,
         expansion_xml: str,
         parent_expansion_id: Optional[str] = None,
-    ) -> SubjectExpansionRecord:
+    ) -> Dict[str, Any]:
         """
         Save a subject expansion to the repository.
 
@@ -66,7 +69,7 @@ class ArtworkRepository(Protocol):
             parent_expansion_id: Reference to parent expansion (None for root expansions)
 
         Returns:
-            SubjectExpansionRecord with the saved data including timestamp
+            Dict with the saved data including timestamp
 
         Raises:
             Exception: If save operation fails
@@ -75,7 +78,7 @@ class ArtworkRepository(Protocol):
 
     async def get_subject_expansion(
         self, expansion_id: str
-    ) -> Optional[SubjectExpansionRecord]:
+    ) -> Optional[Dict[str, Any]]:
         """
         Retrieve a subject expansion by expansion_id.
 
@@ -83,7 +86,7 @@ class ArtworkRepository(Protocol):
             expansion_id: Unique identifier for the expansion
 
         Returns:
-            SubjectExpansionRecord if found, None otherwise
+            Dict if found, None otherwise
 
         Raises:
             Exception: If retrieval operation fails
@@ -92,7 +95,7 @@ class ArtworkRepository(Protocol):
 
     async def get_subject_expansions(
         self, artwork_id: str
-    ) -> list[SubjectExpansionRecord]:
+    ) -> list[Dict[str, Any]]:
         """
         Retrieve all subject expansions for a given artwork.
 
@@ -100,7 +103,7 @@ class ArtworkRepository(Protocol):
             artwork_id: Reference to the original artwork
 
         Returns:
-            List of SubjectExpansionRecord, empty list if none found
+            List of Dict, empty list if none found
 
         Raises:
             Exception: If retrieval operation fails
@@ -120,7 +123,7 @@ class ArtworkRepository(Protocol):
         """
         ...
 
-    async def get_user_saved_artworks(self, user_id: str) -> list[ArtworkRecord]:
+    async def get_user_saved_artworks(self, user_id: str) -> list[Dict[str, Any]]:
         """
         Retrieve all artworks saved by a user (metadata only, no XML).
 
@@ -128,7 +131,7 @@ class ArtworkRepository(Protocol):
             user_id: The user's ID
 
         Returns:
-            List of ArtworkRecord with metadata, empty list if none found
+            List of Dict with metadata, empty list if none found
 
         Raises:
             Exception: If retrieval operation fails
@@ -137,7 +140,7 @@ class ArtworkRepository(Protocol):
 
     async def get_all_expansions_with_hierarchy(
         self, artwork_id: str
-    ) -> list[SubjectExpansionRecord]:
+    ) -> list[Dict[str, Any]]:
         """
         Retrieve all subject expansions for a given artwork using recursive CTE.
 
@@ -145,7 +148,26 @@ class ArtworkRepository(Protocol):
             artwork_id: Reference to the original artwork
 
         Returns:
-            List of SubjectExpansionRecord with all expansions in hierarchy order
+            List of Dict with all expansions in hierarchy order
+
+        Raises:
+            Exception: If retrieval operation fails
+        """
+        ...
+
+    async def get_cached_subject_expansion(
+        self, artwork_id: str, subject: str, parent_expansion_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a cached subject expansion by artwork_id, subject, and parent_expansion_id.
+
+        Args:
+            artwork_id: Reference to the original artwork
+            subject: The subject string to look up
+            parent_expansion_id: Optional parent expansion ID for context
+
+        Returns:
+            Dict if found in cache, None otherwise
 
         Raises:
             Exception: If retrieval operation fails

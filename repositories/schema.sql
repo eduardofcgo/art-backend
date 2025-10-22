@@ -7,9 +7,6 @@
 -- - Uses TIMESTAMP for datetime fields (PostgreSQL handles timezone-aware timestamps)
 -- - Foreign key constraints ensure referential integrity
 -- - Indexes optimize common query patterns
---
--- Note: For SQLite compatibility, UUID fields are stored as TEXT/VARCHAR(36)
--- The application code generates UUIDs as strings using str(uuid.uuid4())
 
 CREATE TABLE IF NOT EXISTS user_profiles (
     user_id UUID PRIMARY KEY references auth.users(id) on delete cascade
@@ -20,6 +17,7 @@ CREATE TABLE IF NOT EXISTS artwork_explanations (
     artwork_id UUID PRIMARY KEY,
     explanation_xml TEXT NOT NULL,
     image_path VARCHAR(500),  -- Path to image in Supabase Storage
+    artwork_name VARCHAR(500),  -- Name of the artwork (for name-based explanations)
     creator_user_id UUID references user_profiles(user_id) on delete set null,  -- User who created/uploaded the artwork (nullable for anonymous)
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

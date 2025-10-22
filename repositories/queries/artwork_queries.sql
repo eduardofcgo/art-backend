@@ -8,12 +8,13 @@ ON CONFLICT (user_id) DO NOTHING;
 
 -- name: save_artwork_explanation
 -- Save an artwork explanation to the database
-INSERT INTO artwork_explanations (artwork_id, explanation_xml, image_path, creator_user_id, created_at)
-VALUES (:artwork_id::uuid, :explanation_xml, :image_path, :creator_user_id::uuid, :created_at);
+INSERT INTO artwork_explanations (artwork_id, explanation_xml, image_path, artwork_name, creator_user_id, created_at)
+VALUES (:artwork_id::uuid, :explanation_xml, :image_path, :artwork_name, :creator_user_id::uuid, :created_at)
+RETURNING artwork_id, explanation_xml, image_path, artwork_name, creator_user_id, created_at;
 
 -- name: get_artwork_explanation
 -- Retrieve an artwork explanation by artwork_id
-SELECT artwork_id, explanation_xml, image_path, creator_user_id, created_at
+SELECT artwork_id, explanation_xml, image_path, artwork_name, creator_user_id, created_at
 FROM artwork_explanations
 WHERE artwork_id = :artwork_id::uuid;
 
@@ -50,7 +51,7 @@ VALUES (:user_id::uuid, :artwork_id::uuid, :saved_at);
 
 -- name: get_user_saved_artworks
 -- Retrieve all artworks saved by a user (metadata only, no XML)
-select artwork_id, image_path, created_at, creator_user_id, created_at as saved_at
+select artwork_id, image_path, artwork_name, created_at, creator_user_id, created_at
 from artwork_explanations
 -- SELECT ae.artwork_id, ae.image_path, ae.created_at, ae.creator_user_id, usa.saved_at
 -- FROM user_saved_artworks usa
